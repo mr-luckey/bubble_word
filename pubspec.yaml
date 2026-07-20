@@ -1,0 +1,34 @@
+name: bubble_word
+description: "BubbleWord - Merge letter balls to form words."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^8.1.6
+  bloc: ^8.1.4
+  equatable: ^2.0.7
+  go_router: ^14.6.2
+  get_it: ^8.0.3
+  shared_preferences: ^2.3.4
+  audioplayers: ^6.1.0
+  lottie: ^3.3.1
+  google_mobile_ads: ^9.0.0
+  uuid: ^4.5.1
+  google_fonts: ^8.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/data/
+    - assets/audio/
+    - assets/lottie/
