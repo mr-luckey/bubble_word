@@ -20,6 +20,8 @@ dependencies:
   google_mobile_ads: ^9.0.0
   uuid: ^4.5.1
   google_fonts: ^8.2.0
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
 
 dev_dependencies:
   flutter_test:

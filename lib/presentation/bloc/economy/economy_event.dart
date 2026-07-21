@@ -56,6 +56,21 @@ class RecordLevelStars extends EconomyEvent {
   List<Object?> get props => [levelId, stars];
 }
 
+class CompleteLevel extends EconomyEvent {
+  const CompleteLevel({
+    required this.levelId,
+    required this.stars,
+    required this.coinsEarned,
+  });
+
+  final int levelId;
+  final int stars;
+  final int coinsEarned;
+
+  @override
+  List<Object?> get props => [levelId, stars, coinsEarned];
+}
+
 class IncrementLevelsCompleted extends EconomyEvent {
   const IncrementLevelsCompleted();
 }

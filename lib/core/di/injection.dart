@@ -1,3 +1,4 @@
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -24,13 +25,15 @@ import '../../presentation/bloc/settings/settings_bloc.dart';
 final getIt = GetIt.instance;
 
 Future<void> configureDependencies() async {
+  await Hive.initFlutter();
+
   final prefs = await SharedPreferences.getInstance();
   getIt.registerSingleton<SharedPreferences>(prefs);
 
   getIt.registerLazySingleton(LocalLevelDataSource.new);
-  getIt.registerLazySingleton<PlayerProgressDataSource>(
-    () => PlayerProgressDataSource(getIt()),
-  );
+  final progressDataSource = PlayerProgressDataSource(prefs);
+  await progressDataSource.open();
+  getIt.registerSingleton<PlayerProgressDataSource>(progressDataSource);
 
   getIt.registerLazySingleton(CalculateMoveBudget.new);
   getIt.registerLazySingleton<LevelRepository>(

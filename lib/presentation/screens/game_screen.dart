@@ -270,14 +270,14 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
               if (state is GameWon) {
                 getIt<AudioService>().playWin();
                 final economy = context.read<EconomyBloc>();
-                economy.add(EarnCoins(state.coinsEarned));
-                economy.add(RecordLevelStars(
+                final levelsBefore = economy.state.economy.levelsCompletedSinceAd;
+                economy.add(CompleteLevel(
                   levelId: state.gameState.level.id,
                   stars: state.stars,
+                  coinsEarned: state.coinsEarned,
                 ));
-                economy.add(const IncrementLevelsCompleted());
-                final econ = economy.state.economy;
-                if (!econ.noAdsPurchased && econ.levelsCompletedSinceAd >= 3) {
+                if (!economy.state.economy.noAdsPurchased &&
+                    levelsBefore + 1 >= 3) {
                   context.read<AdBloc>().add(const ShowInterstitialAd());
                   economy.add(const ResetLevelsCompletedAd());
                 }
