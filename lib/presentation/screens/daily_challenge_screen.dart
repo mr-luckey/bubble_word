@@ -8,6 +8,7 @@ import '../../core/constants/app_dimensions.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/constants/game_constants.dart';
 import '../../core/theme/app_decorations.dart';
+import '../../core/widgets/app_logo.dart';
 import '../bloc/economy/economy_bloc.dart';
 import '../widgets/app_screen_shell.dart';
 
@@ -54,25 +55,7 @@ class DailyChallengeScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.neonGold.withValues(alpha: 0.15),
-                    border: Border.all(color: AppColors.neonGold, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.neonGold.withValues(alpha: 0.35),
-                        blurRadius: 16,
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.local_fire_department,
-                    color: AppColors.neonGold,
-                    size: 56,
-                  ),
-                ),
+                const AppLogo(size: 120),
                 const SizedBox(height: AppDimensions.paddingM),
                 Text(
                   AppStrings.dailyChallenge.toUpperCase(),

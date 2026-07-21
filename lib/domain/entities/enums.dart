@@ -18,6 +18,7 @@ enum GamePhase {
 enum MergeFeedback {
   none,
   correct,
+  wordComplete,
   wrong,
 }
 

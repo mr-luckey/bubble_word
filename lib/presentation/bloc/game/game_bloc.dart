@@ -311,6 +311,17 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
         return;
       }
       boardBalls = _separateBoard(boardBalls);
+      emit(GamePlaying(gs.copyWith(
+        phase: phase,
+        boardBalls: boardBalls,
+        trayBalls: trayBalls,
+        completedWordIds: completedIds,
+        mergeFeedback: MergeFeedback.wordComplete,
+        snapBallId: result.resultBall.id,
+        clearDragging: true,
+        clearLastWrong: true,
+      )));
+      return;
     } else if (result.isCorrect && gs.phase == GamePhase.buildingWords) {
       boardBalls = _separateBoard(boardBalls);
     }

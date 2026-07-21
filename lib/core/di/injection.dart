@@ -1,5 +1,4 @@
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -15,6 +14,8 @@ import '../../domain/usecases/game_engine.dart';
 import '../../domain/usecases/get_level.dart';
 import '../../domain/usecases/validate_merge.dart';
 import '../utils/audio_service.dart';
+import '../utils/rate_app_service.dart';
+import '../utils/update_service.dart';
 import '../utils/ball_physics_engine.dart';
 import '../../presentation/bloc/ad/ad_bloc.dart';
 import '../../presentation/bloc/economy/economy_bloc.dart';
@@ -52,8 +53,10 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton(SplitJunkBall.new);
   getIt.registerLazySingleton(BallPhysicsEngine.new);
 
-  getIt.registerLazySingleton(() => AudioPlayer());
-  getIt.registerLazySingleton(() => AudioService(getIt()));
+  getIt.registerLazySingleton(AudioService.new);
+  getIt.registerLazySingleton(UpdateService.new);
+  getIt.registerLazySingleton(RateAppService.new);
+  await getIt<AudioService>().init();
 
   getIt.registerFactory(() => LevelBloc(getIt(), getIt()));
   getIt.registerFactory(

@@ -6,13 +6,35 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_dimensions.dart';
 import '../../core/constants/app_strings.dart';
+import '../../core/di/injection.dart';
 import '../../core/theme/app_decorations.dart';
+import '../../core/widgets/app_logo.dart';
+import '../../core/utils/update_dialog.dart';
+import '../../core/utils/update_service.dart';
 import '../bloc/economy/economy_bloc.dart';
 import '../widgets/app_screen_shell.dart';
 import '../widgets/level_map_view.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _autoCheckForUpdate());
+  }
+
+  Future<void> _autoCheckForUpdate() async {
+    if (!mounted) return;
+    final result = await getIt<UpdateService>().checkForUpdate();
+    if (!mounted || !result.checkSucceeded || !result.updateAvailable) return;
+    await showUpdateDialogIfNeeded(context, result);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +67,8 @@ class HomeScreen extends StatelessWidget {
                   builder: (context, state) {
                     return Column(
                       children: [
+                        const AppLogo(size: 96),
+                        const SizedBox(height: AppDimensions.paddingS),
                         Text(
                           AppStrings.appName.toUpperCase(),
                           style: GoogleFonts.nunito(

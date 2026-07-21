@@ -34,6 +34,21 @@ abstract final class AppStrings {
   static const String sound = 'Sound';
   static const String music = 'Music';
   static const String haptics = 'Haptics';
+  static const String rateApp = 'Rate This App';
+  static const String checkForUpdates = 'Check for Updates';
+  static const String updateAvailable = 'Update Available';
+  static const String updateMessage =
+      'A new version of BubbleWord is available.';
+  static const String currentVersion = 'Current';
+  static const String storeVersion = 'Store version';
+  static const String updateCheckFailed =
+      'Could not check for updates. Try again later.';
+  static const String updateNow = 'Update Now';
+  static const String notNow = 'Not Now';
+  static const String upToDate = 'You are on the latest version';
+  static const String version = 'Version';
+  static const String rateAppUnavailable =
+      'Store review is not available on this device.';
   static const String selectWord = 'Select a word to complete';
   static const String queueRemaining = 'Queue';
   static const String freeReward = 'Free Daily Reward';

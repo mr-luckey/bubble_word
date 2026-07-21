@@ -5,6 +5,7 @@ import '../../core/constants/app_dimensions.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/theme/app_decorations.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/widgets/app_logo.dart';
 import '../../core/widgets/confetti_painter.dart';
 import '../../core/widgets/nebula_background.dart';
 import '../bloc/game/game_bloc.dart';
@@ -70,6 +71,8 @@ class _LevelCompleteOverlayState extends State<LevelCompleteOverlay>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      const AppLogo(size: 72),
+                      const SizedBox(height: AppDimensions.paddingS),
                       Text(
                         AppStrings.levelComplete,
                         style: AppTextStyles.heading(context).copyWith(

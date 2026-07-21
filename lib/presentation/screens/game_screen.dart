@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -154,25 +153,52 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     }
   }
 
+  void _syncAudio(SettingsBlocState settings) {
+    getIt<AudioService>().syncSettings(
+      sound: settings.sound,
+      music: settings.music,
+      haptics: settings.haptics,
+    );
+  }
+
   void _handleMergeFeedback(BuildContext context, GamePlaying state) {
     final feedback = state.gameState.mergeFeedback;
     if (feedback == MergeFeedback.none) return;
 
     final audio = getIt<AudioService>();
     final settings = context.read<SettingsBloc>().state;
-    audio.soundEnabled = settings.sound;
-    audio.hapticsEnabled = settings.haptics;
+    _syncAudio(settings);
 
-    if (feedback == MergeFeedback.correct) {
-      audio.playMerge();
-      if (settings.haptics) HapticFeedback.lightImpact();
-    } else {
-      audio.playWrong();
+    switch (feedback) {
+      case MergeFeedback.correct:
+        audio.playMerge();
+        audio.hapticMerge();
+      case MergeFeedback.wordComplete:
+        audio.playWordComplete();
+      case MergeFeedback.wrong:
+        audio.playWrong();
+      case MergeFeedback.none:
+        break;
     }
 
     Future.delayed(const Duration(milliseconds: 400), () {
       if (mounted) _gameBloc.add(const ClearMergeFeedback());
     });
+  }
+
+  void _handleGameEndFeedback(BuildContext context, GameBlocState state) {
+    final audio = getIt<AudioService>();
+    _syncAudio(context.read<SettingsBloc>().state);
+
+    if (state is GameWon) {
+      audio.playWin();
+    } else if (state is GameFailed) {
+      if (state.reason == FailReason.timeOut) {
+        audio.playTimeout();
+      } else {
+        audio.playFail();
+      }
+    }
   }
 
   void _showSnackBar(String message) {
@@ -267,15 +293,6 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
               }
             },
           ),
-          BlocListener<GameBloc, GameBlocState>(
-            listenWhen: (prev, curr) =>
-                curr is GamePlaying &&
-                prev is GamePlaying &&
-                prev.gameState.mergeFeedback != curr.gameState.mergeFeedback,
-            listener: (context, state) {
-              if (state is GamePlaying) _handleMergeFeedback(context, state);
-            },
-          ),
           BlocListener<AdBloc, AdBlocState>(
             listener: (context, state) {
               if (state is AdComplete) {
@@ -287,10 +304,21 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
             },
           ),
           BlocListener<GameBloc, GameBlocState>(
+            listenWhen: (prev, curr) =>
+                curr is GameWon ||
+                curr is GameFailed ||
+                (curr is GamePlaying &&
+                    prev is GamePlaying &&
+                    prev.gameState.mergeFeedback != curr.gameState.mergeFeedback),
             listener: (context, state) {
+              if (state is GamePlaying) {
+                _handleMergeFeedback(context, state);
+                return;
+              }
+
               if (state is GameWon) {
                 _stopLevelTimer();
-                getIt<AudioService>().playWin();
+                _handleGameEndFeedback(context, state);
                 if (!widget.isDailyChallenge) {
                   final economy = context.read<EconomyBloc>();
                   final levelsBefore =
@@ -307,6 +335,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                 }
               } else if (state is GameFailed) {
                 _stopLevelTimer();
+                _handleGameEndFeedback(context, state);
                 if (!_lifeSpentForFail) {
                   _lifeSpentForFail = true;
                   final economy = context.read<EconomyBloc>();

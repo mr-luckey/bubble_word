@@ -5,11 +5,9 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_dimensions.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/theme/app_text_styles.dart';
-import '../../core/widgets/bubble_ball_widget.dart';
+import '../../core/widgets/app_logo.dart';
 import '../../core/widgets/banner_ad_widget.dart';
 import '../../core/widgets/nebula_background.dart';
-import '../../domain/entities/ball.dart';
-import '../../domain/entities/enums.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -56,17 +54,14 @@ class _SplashScreenState extends State<SplashScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _logoBall(context, 'BL'),
-                          const SizedBox(width: 8),
-                          _logoBall(context, 'UE'),
-                          const SizedBox(width: 8),
-                          _logoBall(context, 'RE'),
-                          const SizedBox(width: 8),
-                          _logoBall(context, 'D'),
-                        ],
+                      ScaleTransition(
+                        scale: Tween<double>(begin: 0.85, end: 1.0).animate(
+                          CurvedAnimation(
+                            parent: _controller,
+                            curve: Curves.easeOutBack,
+                          ),
+                        ),
+                        child: const AppLogo(size: 160),
                       ),
                       const SizedBox(height: AppDimensions.paddingL),
                       Text(
@@ -87,7 +82,8 @@ class _SplashScreenState extends State<SplashScreen>
                           animation: _controller,
                           builder: (_, __) => LinearProgressIndicator(
                             value: _controller.value,
-                            backgroundColor: Colors.white.withValues(alpha: 0.15),
+                            backgroundColor:
+                                Colors.white.withValues(alpha: 0.15),
                             color: AppColors.bubbleGlow,
                           ),
                         ),
@@ -101,21 +97,6 @@ class _SplashScreenState extends State<SplashScreen>
           ),
         ),
       ),
-    );
-  }
-
-  Widget _logoBall(BuildContext context, String chars) {
-    return BubbleBallWidget(
-      ball: Ball(
-        id: chars,
-        chars: chars,
-        type: BallType.fragment,
-        wordId: 'logo',
-        category: 'Colors',
-      ),
-      showProgressRing: false,
-      enableIdleFloat: false,
-      compact: true,
     );
   }
 }
