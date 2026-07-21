@@ -137,6 +137,67 @@ void main() {
       );
       expect(result, isNull);
     });
+
+    test('merges by letters across different word balls (APPLE/GRAPE)', () {
+      const fruitsLevel = Level(
+        id: 2,
+        hint: 'Find 3 fruits',
+        category: 'Fruits',
+        difficulty: Difficulty.easy,
+        wordCount: 3,
+        moveBudget: 20,
+        words: [
+          Word(id: 'APPLE', text: 'APPLE', fragments: ['AP', 'PL', 'E']),
+          Word(id: 'MANGO', text: 'MANGO', fragments: ['MA', 'NG', 'O']),
+          Word(id: 'GRAPE', text: 'GRAPE', fragments: ['GR', 'AP', 'E']),
+        ],
+      );
+      final validate = ValidateMerge();
+
+      final grapeStart = validate(
+        source: const Ball(
+          id: 'ap_apple',
+          chars: 'AP',
+          type: BallType.fragment,
+          wordId: 'APPLE',
+          category: 'Fruits',
+        ),
+        target: const Ball(
+          id: 'gr',
+          chars: 'GR',
+          type: BallType.fragment,
+          wordId: 'GRAPE',
+          category: 'Fruits',
+        ),
+        level: fruitsLevel,
+        phase: GamePhase.buildingWords,
+      );
+      expect(grapeStart?.isCorrect, true);
+      expect(grapeStart?.resultBall.chars, 'GRAP');
+      expect(grapeStart?.resultBall.wordId, 'GRAPE');
+
+      final appleMerge = validate(
+        source: const Ball(
+          id: 'pl',
+          chars: 'PL',
+          type: BallType.fragment,
+          wordId: 'APPLE',
+          category: 'Fruits',
+        ),
+        target: const Ball(
+          id: 'ap_grape',
+          chars: 'AP',
+          type: BallType.fragment,
+          wordId: 'GRAPE',
+          category: 'Fruits',
+        ),
+        level: fruitsLevel,
+        phase: GamePhase.buildingWords,
+      );
+      expect(appleMerge?.isCorrect, true);
+      expect(appleMerge?.resultBall.chars, 'APPL');
+      expect(appleMerge?.resultBall.wordId, 'APPLE');
+    });
   });
 
   group('DecoyBallGenerator', () {

@@ -42,7 +42,7 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton(() => GetTotalLevels(getIt()));
 
   getIt.registerLazySingleton(ValidateMerge.new);
-  getIt.registerLazySingleton(CheckBoardOverload.new);
+  getIt.registerLazySingleton(() => CheckBoardOverload(getIt()));
   getIt.registerLazySingleton(CalculateStarRating.new);
   getIt.registerLazySingleton(() => InitializeGameState(const Uuid()));
   getIt.registerLazySingleton(SpawnBallFromQueue.new);

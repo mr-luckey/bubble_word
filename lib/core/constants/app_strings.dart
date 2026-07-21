@@ -19,6 +19,7 @@ abstract final class AppStrings {
   static const String daily = 'Daily';
   static const String settings = 'Settings';
   static const String map = 'Map';
+  static const String home = 'Home';
   static const String hint = 'Hint';
   static const String magnet = 'Magnet';
   static const String addBall = 'Add Ball';

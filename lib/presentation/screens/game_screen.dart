@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,7 +12,9 @@ import '../../core/di/injection.dart';
 import '../../core/router/app_router.dart';
 import '../../core/utils/audio_service.dart';
 import '../../core/utils/board_layout.dart';
+import '../../core/widgets/banner_ad_widget.dart';
 import '../../core/widgets/bubble_ball_widget.dart';
+import '../../core/widgets/glow_platform.dart';
 import '../../core/widgets/hint_connector_painter.dart';
 import '../../core/widgets/game_header_bar.dart';
 import '../../core/widgets/nebula_background.dart';
@@ -35,7 +40,7 @@ class GameScreen extends StatefulWidget {
   State<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> {
+class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateMixin {
   late LevelBloc _levelBloc;
   late GameBloc _gameBloc;
   late BoosterBloc _boosterBloc;
@@ -43,7 +48,11 @@ class _GameScreenState extends State<GameScreen> {
   double _boardWidth = 360;
   double _boardHeight = 480;
   bool _levelStarted = false;
+  int _layoutBallCount = 0;
+  bool _dropComplete = false;
   Offset _dragTouchOffset = Offset.zero;
+  AnimationController? _dropController;
+  _PendingAdAction? _pendingAd;
 
   @override
   void initState() {
@@ -54,11 +63,69 @@ class _GameScreenState extends State<GameScreen> {
     getIt<EconomyBloc>().add(const ResetLevelBoosterFlags());
   }
 
+  @override
+  void didUpdateWidget(covariant GameScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.levelId != widget.levelId) {
+      _levelStarted = false;
+      _layoutBallCount = 0;
+      _dropComplete = false;
+    }
+  }
+
   void _startLevelIfReady(Level level) {
     if (_levelStarted) return;
     if (_boardWidth <= 0 || _boardHeight <= 0) return;
     _levelStarted = true;
+    _dropComplete = false;
     _gameBloc.add(StartLevel(level, boardWidth: _boardWidth, boardHeight: _boardHeight));
+    _startDropAnimation();
+  }
+
+  void _startDropAnimation() {
+    _dropController?.dispose();
+    _dropController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    )..addListener(() {
+        if (mounted) setState(() {});
+      });
+    _dropController!.forward().whenComplete(() {
+      if (mounted) setState(() => _dropComplete = true);
+    });
+  }
+
+  double _ballDisplayY(Ball ball, double minY, double maxY) {
+    if (_dropComplete || ball.isDragging || _dropController == null) {
+      return ball.y;
+    }
+    final range = maxY - minY;
+    // Bottom row (maxY) lands first; top row lands last.
+    final stagger = range > 0 ? ((maxY - ball.y) / range) * 0.55 : 0.0;
+    final progress = _dropController!.value;
+    final t = Curves.easeInCubic.transform(
+      ((progress - stagger) / (1.0 - stagger)).clamp(0.0, 1.0),
+    );
+    final startY = -80.0;
+    return ui.lerpDouble(startY, ball.y, t) ?? ball.y;
+  }
+
+  void _onPlayfieldSized(double width, double height, Level level) {
+    final sizeChanged =
+        (width - _boardWidth).abs() > 2 || (height - _boardHeight).abs() > 2;
+    _boardWidth = width;
+    _boardHeight = height;
+
+    if (!_levelStarted) {
+      _startLevelIfReady(level);
+      return;
+    }
+
+    if (sizeChanged) {
+      _gameBloc.add(RelayoutBoard(boardWidth: width, boardHeight: height));
+      _dropComplete = false;
+      _startDropAnimation();
+    }
   }
 
   void _handleMergeFeedback(BuildContext context, GamePlaying state) {
@@ -91,8 +158,63 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
+  void _handleHint(BuildContext context) {
+    final economy = context.read<EconomyBloc>().state.economy;
+    final inv = economy.boosters;
+
+    if (!inv.freeHintUsedThisLevel) {
+      _boosterBloc.add(const UseHint());
+      return;
+    }
+
+    if (inv.hint > 0) {
+      if (!economy.noAdsPurchased) {
+        _pendingAd = _PendingAdAction.hintInterstitial;
+        context.read<AdBloc>().add(const ShowInterstitialAd());
+      } else {
+        _boosterBloc.add(const UseHint());
+      }
+      return;
+    }
+
+    if (!economy.noAdsPurchased) {
+      _pendingAd = _PendingAdAction.hintRewarded;
+      context.read<AdBloc>().add(const ShowRewardedAd());
+    } else {
+      _showSnackBar('No hints left');
+    }
+  }
+
+  void _onAdComplete(BuildContext context, AdComplete state) {
+    final pending = _pendingAd;
+    if (pending == null) return;
+    _pendingAd = null;
+
+    switch (pending) {
+      case _PendingAdAction.hintInterstitial:
+        _boosterBloc.add(const UseHint());
+      case _PendingAdAction.hintRewarded:
+        if (state.rewarded) {
+          final inv = context.read<EconomyBloc>().state.economy.boosters;
+          context.read<EconomyBloc>().add(
+                UpdateBoosters(inv.copyWith(hint: inv.hint + 1)),
+              );
+          _boosterBloc.add(const UseHint());
+        } else {
+          _showSnackBar('Watch the full ad to get a hint');
+        }
+      case _PendingAdAction.continueMoves:
+        if (state.rewarded) {
+          _gameBloc.add(const AddExtraMoves());
+        } else {
+          _showSnackBar('Watch the full ad for +5 moves');
+        }
+    }
+  }
+
   @override
   void dispose() {
+    _dropController?.dispose();
     _levelBloc.close();
     _gameBloc.close();
     _boosterBloc.close();
@@ -113,7 +235,7 @@ class _GameScreenState extends State<GameScreen> {
             listener: (context, state) {
               if (state is LevelLoaded) {
                 _levelStarted = false;
-                _startLevelIfReady(state.level);
+                _dropComplete = false;
               }
             },
           ),
@@ -131,6 +253,16 @@ class _GameScreenState extends State<GameScreen> {
                 prev.gameState.mergeFeedback != curr.gameState.mergeFeedback,
             listener: (context, state) {
               if (state is GamePlaying) _handleMergeFeedback(context, state);
+            },
+          ),
+          BlocListener<AdBloc, AdBlocState>(
+            listener: (context, state) {
+              if (state is AdComplete) {
+                _onAdComplete(context, state);
+              } else if (state is AdError) {
+                _pendingAd = null;
+                _showSnackBar('Ad unavailable. Try again.');
+              }
             },
           ),
           BlocListener<GameBloc, GameBlocState>(
@@ -167,50 +299,72 @@ class _GameScreenState extends State<GameScreen> {
                 }
                 return BlocBuilder<GameBloc, GameBlocState>(
                   builder: (context, gameState) {
+                    if (levelState is! LevelLoaded) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
                     if (gameState is GameWon) {
-                      return LevelCompleteOverlay(
-                        gameState: gameState,
-                        onNext: () {
-                          final next = widget.levelId + 1;
-                          getIt<EconomyBloc>().add(const ResetLevelBoosterFlags());
-                          if (next <= 1000) {
-                            context.go('/game/$next');
-                          } else {
-                            context.go('/home');
-                          }
-                        },
-                        onHome: () => context.go('/home'),
+                      return Column(
+                        children: [
+                          Expanded(
+                            child: LevelCompleteOverlay(
+                              gameState: gameState,
+                              onNext: () {
+                                final economy = getIt<EconomyBloc>();
+                                if (economy.state.economy.lives <= 0) {
+                                  context.go('/home');
+                                  return;
+                                }
+                                economy.add(const SpendLife());
+                                economy.add(const ResetLevelBoosterFlags());
+                                final next = widget.levelId + 1;
+                                if (next <= 1000) {
+                                  context.go('/game/$next');
+                                } else {
+                                  context.go('/home');
+                                }
+                              },
+                              onHome: () => context.go('/home'),
+                            ),
+                          ),
+                          const BannerAdWidget(),
+                        ],
                       );
                     }
                     if (gameState is GameFailed) {
-                      return LevelFailOverlay(
-                        gameState: gameState,
-                        onRetry: () {
-                          _levelStarted = false;
-                          _gameBloc.add(StartLevel(
-                            gameState.gameState.level,
-                            boardWidth: _boardWidth,
-                            boardHeight: _boardHeight,
-                          ));
-                        },
-                        onWatchAd: () {
-                          context.read<AdBloc>().add(const ShowRewardedAd());
-                          _gameBloc.add(const AddExtraMoves());
-                        },
-                        onSpendCoins: () {
-                          context.read<EconomyBloc>().add(const SpendCoins(100));
-                          _gameBloc.add(const AddExtraMoves());
-                        },
-                        onHome: () {
-                          context.read<EconomyBloc>().add(const SpendLife());
-                          context.go('/home');
-                        },
+                      return Column(
+                        children: [
+                          Expanded(
+                            child: LevelFailOverlay(
+                              gameState: gameState,
+                              onRetry: () {
+                                _levelStarted = false;
+                                _dropComplete = false;
+                                _gameBloc.add(StartLevel(
+                                  gameState.gameState.level,
+                                  boardWidth: _boardWidth,
+                                  boardHeight: _boardHeight,
+                                ));
+                                _startDropAnimation();
+                              },
+                              onWatchAd: () {
+                                _pendingAd = _PendingAdAction.continueMoves;
+                                context.read<AdBloc>().add(const ShowRewardedAd());
+                              },
+                              onSpendCoins: () {
+                                context.read<EconomyBloc>().add(const SpendCoins(100));
+                                _gameBloc.add(const AddExtraMoves());
+                              },
+                              onHome: () => context.go('/home'),
+                            ),
+                          ),
+                          const BannerAdWidget(),
+                        ],
                       );
                     }
                     if (gameState is GamePlaying) {
-                      return _buildGameplay(context, gameState, levelState as LevelLoaded);
+                      return _buildGameplay(context, gameState, levelState);
                     }
-                    return const Center(child: CircularProgressIndicator());
+                    return _buildGameplayShell(context, levelState);
                   },
                 );
               },
@@ -222,21 +376,117 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  double _ballRadius(Ball ball, int ballCount) {
+  double _ballRadius(Ball ball) {
     return BoardLayout.radiusFor(
       ball,
       screenWidth: _boardWidth,
-      ballCount: ballCount,
+      boardWidth: _boardWidth,
+      layoutBallCount: _layoutBallCount,
       boardHeight: _boardHeight,
     );
   }
 
-  double _ballSize(Ball ball, int ballCount) {
-    return AppDimensions.visualBallSize(_ballRadius(ball, ballCount));
+  double _ballSize(Ball ball) {
+    return AppDimensions.visualBallSize(_ballRadius(ball));
+  }
+
+  List<Widget> _buildBoardBallWidgets(
+    List<Ball> onBoard,
+    String? snapBallId,
+  ) {
+    final maxY = onBoard.fold(0.0, (m, b) => math.max(m, b.y));
+    final minY = onBoard.fold(double.infinity, (m, b) => math.min(m, b.y));
+    final widgets = <Widget>[];
+    for (var i = 0; i < onBoard.length; i++) {
+      final ball = onBoard[i];
+      final displayY = _ballDisplayY(ball, minY, maxY);
+      final size = _ballSize(ball);
+      widgets.add(
+        Positioned(
+          left: ball.x - size / 2,
+          top: displayY - size / 2,
+            child: BubbleBallWidget(
+              ball: ball,
+              radius: _ballRadius(ball),
+              enableIdleFloat: _dropComplete,
+              mergeSnapping: snapBallId == ball.id,
+            onPanStart: (d) {
+              final box =
+                  _playfieldKey.currentContext?.findRenderObject() as RenderBox?;
+              if (box != null) {
+                final local = box.globalToLocal(d.globalPosition);
+                _dragTouchOffset = Offset(
+                  local.dx - ball.x,
+                  local.dy - displayY,
+                );
+              }
+              _gameBloc.add(DragBallStart(ball.id));
+            },
+            onPanUpdate: (d) {
+              final box =
+                  _playfieldKey.currentContext?.findRenderObject() as RenderBox?;
+              if (box != null) {
+                final local = box.globalToLocal(d.globalPosition);
+                _gameBloc.add(DragBallUpdate(
+                  x: local.dx - _dragTouchOffset.dx,
+                  y: local.dy - _dragTouchOffset.dy,
+                ));
+              }
+            },
+            onPanEnd: (_) {
+              _dragTouchOffset = Offset.zero;
+              _gameBloc.add(const DragBallEnd());
+            },
+          ),
+        ),
+      );
+    }
+    return widgets;
+  }
+
+  Widget _buildGameplayShell(BuildContext context, LevelLoaded levelState) {
+    return Column(
+      children: [
+        BlocBuilder<EconomyBloc, EconomyBlocState>(
+          builder: (context, econState) => GameHeaderBar(
+            levelId: levelState.level.id,
+            wordsComplete: 0,
+            wordsTotal: levelState.level.wordCount,
+            onBack: () => context.go('/home'),
+            hintCount: econState.economy.boosters.hint,
+            onHint: () => _handleHint(context),
+          ),
+        ),
+        TargetWordsPanel(
+          level: levelState.level,
+          completedWordIds: const [],
+        ),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  _onPlayfieldSized(
+                    constraints.maxWidth,
+                    constraints.maxHeight,
+                    levelState.level,
+                  );
+                }
+              });
+              return const Center(child: CircularProgressIndicator());
+            },
+          ),
+        ),
+        const BannerAdWidget(),
+      ],
+    );
   }
 
   Widget _buildGameplay(BuildContext context, GamePlaying gameState, LevelLoaded levelState) {
     final gs = gameState.gameState;
+    if (_layoutBallCount == 0) {
+      _layoutBallCount = gs.boardBalls.where((b) => b.isOnBoard).length;
+    }
     final wrongFlash = gs.mergeFeedback == MergeFeedback.wrong;
 
     return Column(
@@ -248,7 +498,7 @@ class _GameScreenState extends State<GameScreen> {
             wordsTotal: gs.level.wordCount,
             onBack: () => context.go('/home'),
             hintCount: econState.economy.boosters.hint,
-            onHint: () => context.read<BoosterBloc>().add(const UseHint()),
+            onHint: () => _handleHint(context),
           ),
         ),
         TargetWordsPanel(
@@ -256,17 +506,19 @@ class _GameScreenState extends State<GameScreen> {
           completedWordIds: gs.completedWordIds,
         ),
         Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  _boardWidth = constraints.maxWidth;
-                  _boardHeight = constraints.maxHeight;
-                  if (!_levelStarted) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      _startLevelIfReady(levelState.level);
-                    });
-                  }
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  _onPlayfieldSized(
+                    constraints.maxWidth,
+                    constraints.maxHeight,
+                    levelState.level,
+                  );
+                }
+              });
 
-                  Ball? hintA;
+              Ball? hintA;
                   Ball? hintB;
                   if (gs.hintBallIds.length >= 2) {
                     hintA = gs.boardBalls
@@ -277,8 +529,12 @@ class _GameScreenState extends State<GameScreen> {
                         .firstOrNull;
                   }
 
-                  final onBoard = gs.boardBalls.where((b) => b.isOnBoard).toList();
-                  final onBoardCount = onBoard.length;
+                  final onBoard = gs.boardBalls.where((b) => b.isOnBoard).toList()
+                    ..sort((a, b) {
+                      if (a.isDragging) return 1;
+                      if (b.isDragging) return -1;
+                      return 0;
+                    });
 
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
@@ -289,6 +545,13 @@ class _GameScreenState extends State<GameScreen> {
                       key: _playfieldKey,
                       clipBehavior: Clip.none,
                       children: [
+                        const Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          height: 36,
+                          child: GlowPlatform(),
+                        ),
                         if (hintA != null && hintB != null)
                           CustomPaint(
                             size: Size(_boardWidth, _boardHeight),
@@ -297,60 +560,23 @@ class _GameScreenState extends State<GameScreen> {
                               ballB: hintB,
                             ),
                           ),
-                        for (final ball in [
-                          ...onBoard,
-                        ]..sort((a, b) {
-                            if (a.isDragging) return 1;
-                            if (b.isDragging) return -1;
-                            return 0;
-                          }))
-                          Positioned(
-                            left: ball.x - _ballSize(ball, onBoardCount) / 2,
-                            top: ball.y - _ballSize(ball, onBoardCount) / 2,
-                            child: BubbleBallWidget(
-                              ball: ball,
-                              radius: _ballRadius(ball, onBoardCount),
-                              mergeSnapping: gs.snapBallId == ball.id,
-                              onPanStart: (d) {
-                                final box = _playfieldKey.currentContext
-                                    ?.findRenderObject() as RenderBox?;
-                                if (box != null) {
-                                  final local =
-                                      box.globalToLocal(d.globalPosition);
-                                  _dragTouchOffset = Offset(
-                                    local.dx - ball.x,
-                                    local.dy - ball.y,
-                                  );
-                                }
-                                _gameBloc.add(DragBallStart(ball.id));
-                              },
-                              onPanUpdate: (d) {
-                                final box = _playfieldKey.currentContext
-                                    ?.findRenderObject() as RenderBox?;
-                                if (box != null) {
-                                  final local =
-                                      box.globalToLocal(d.globalPosition);
-                                  _gameBloc.add(DragBallUpdate(
-                                    x: local.dx - _dragTouchOffset.dx,
-                                    y: local.dy - _dragTouchOffset.dy,
-                                  ));
-                                }
-                              },
-                              onPanEnd: (_) {
-                                _dragTouchOffset = Offset.zero;
-                                _gameBloc.add(const DragBallEnd());
-                              },
-                            ),
-                          ),
+                        ..._buildBoardBallWidgets(onBoard, gs.snapBallId),
                       ],
                     ),
                   );
                 },
               ),
             ),
+        const BannerAdWidget(),
       ],
     );
   }
+}
+
+enum _PendingAdAction {
+  hintInterstitial,
+  hintRewarded,
+  continueMoves,
 }
 
 extension _FirstOrNull<E> on Iterable<E> {

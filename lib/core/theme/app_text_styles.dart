@@ -47,11 +47,11 @@ abstract final class AppTextStyles {
 
   static TextStyle ballText(BuildContext context, {required double radius}) {
     return GoogleFonts.nunito(
-      fontSize: radius * 0.52,
-      fontWeight: FontWeight.w800,
+      fontSize: radius * 0.54,
+      fontWeight: FontWeight.w900,
       color: Colors.white,
       decoration: TextDecoration.none,
-      letterSpacing: 0.5,
+      letterSpacing: 0.3,
       height: 1.0,
     );
   }

@@ -17,6 +17,15 @@ class StartLevel extends GameEvent {
   List<Object?> get props => [level, boardWidth, boardHeight];
 }
 
+class RelayoutBoard extends GameEvent {
+  const RelayoutBoard({required this.boardWidth, required this.boardHeight});
+  final double boardWidth;
+  final double boardHeight;
+
+  @override
+  List<Object?> get props => [boardWidth, boardHeight];
+}
+
 class TickPhysics extends GameEvent {
   const TickPhysics({
     required this.deltaTime,

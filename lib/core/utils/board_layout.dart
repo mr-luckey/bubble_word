@@ -4,44 +4,74 @@ import '../../domain/entities/ball.dart';
 import '../../domain/entities/enums.dart';
 import '../constants/app_dimensions.dart';
 
-/// Non-overlapping bubble layout for the playfield.
+/// Balls pack tightly at the **bottom** of the playfield — no floating gap.
 abstract final class BoardLayout {
-  static const double _minGap = 16;
-  static const double _margin = 28;
+  static const double _margin = 2;
 
+  /// Largest radius that fits [ballCount] balls across width, stacked from bottom.
+  static double uniformBoardRadius({
+    required int ballCount,
+    required double width,
+    required double height,
+  }) {
+    if (ballCount <= 0 || width <= 0 || height <= 0) {
+      return AppDimensions.ballRadiusSmall * AppDimensions.scaleForWidth(width);
+    }
+
+    final usableW = width - 2 * _margin;
+    final usableH = height - 2 * _margin;
+    var lo = 12.0;
+    var hi = usableW / 2;
+
+    for (var i = 0; i < 36; i++) {
+      final mid = (lo + hi) / 2;
+      if (_fits(ballCount, mid, usableW, usableH) != null) {
+        lo = mid;
+      } else {
+        hi = mid;
+      }
+    }
+    return lo;
+  }
+
+  static List<int>? _fits(int count, double r, double w, double h) {
+    if (r <= 0) return null;
+    final diameter = 2 * r;
+    final cols = math.max(1, (w / diameter).floor());
+    final rowCounts = <int>[];
+    var placed = 0;
+
+    while (placed < count) {
+      rowCounts.add(math.min(cols, count - placed));
+      placed += rowCounts.last;
+    }
+
+    if (rowCounts.length * diameter > h + 0.5) return null;
+    if (cols * diameter > w + 0.5) return null;
+    return rowCounts;
+  }
+
+  /// Uniform on-board radius — locked to [layoutBallCount] so balls never
+  /// grow when words are completed and removed from the board.
   static double radiusFor(
     Ball ball, {
     double screenWidth = 360,
-    int ballCount = 1,
+    required int layoutBallCount,
     double boardHeight = 480,
+    double boardWidth = 360,
   }) {
-    final density =
-        AppDimensions.densityScale(ballCount, screenWidth, boardHeight);
-    final s = AppDimensions.scaleForWidth(screenWidth) * density;
-    if (ball.type == BallType.superBall) return AppDimensions.ballRadiusSuper * s;
-    if (ball.type == BallType.completeWord ||
-        ball.type == BallType.wordInProgress) {
-      return AppDimensions.ballRadiusWord * s;
+    if (ball.type == BallType.superBall) {
+      return AppDimensions.ballRadiusSuper *
+          AppDimensions.scaleForWidth(screenWidth);
     }
-    if (ball.type == BallType.decoy || ball.chars.length >= 3) {
-      return AppDimensions.ballRadiusMedium * s;
+    if (layoutBallCount <= 0) {
+      return AppDimensions.ballRadiusSmall *
+          AppDimensions.scaleForWidth(screenWidth);
     }
-    return AppDimensions.ballRadiusSmall * s;
-  }
-
-  static double _halfExtent(
-    Ball ball, {
-    required double screenWidth,
-    required int ballCount,
-    required double boardHeight,
-  }) {
-    return AppDimensions.visualHalfExtent(
-      radiusFor(
-        ball,
-        screenWidth: screenWidth,
-        ballCount: ballCount,
-        boardHeight: boardHeight,
-      ),
+    return uniformBoardRadius(
+      ballCount: layoutBallCount,
+      width: boardWidth,
+      height: boardHeight,
     );
   }
 
@@ -49,57 +79,49 @@ abstract final class BoardLayout {
     required List<Ball> balls,
     required double width,
     required double height,
+    int? layoutBallCount,
   }) {
     if (balls.isEmpty || width <= 0 || height <= 0) return balls;
 
-    final ballCount = balls.length;
-    final aspect = width / height;
-    var cols = math.max(1, math.sqrt(ballCount * aspect).round());
-    var rows = math.max(1, (ballCount / cols).ceil());
-    while (cols * rows < ballCount) {
-      cols++;
-      rows = (ballCount / cols).ceil();
-    }
-
-    final usableW = width - 2 * _margin;
-    final usableH = height - 2 * _margin;
-    final cellW = usableW / cols;
-    final cellH = usableH / rows;
-
-    final placed = <Ball>[];
-    for (var i = 0; i < balls.length; i++) {
-      final ball = balls[i];
-      final half = _halfExtent(
-        ball,
-        screenWidth: width,
-        ballCount: ballCount,
-        boardHeight: height,
-      );
-      final col = i % cols;
-      final row = i ~/ cols;
-      final jitterX = (i % 3 - 1) * 3.0;
-      final jitterY = ((i * 5) % 3 - 1) * 3.0;
-      final x = (_margin + cellW * (col + 0.5) + jitterX)
-          .clamp(_margin + half, width - _margin - half);
-      final y = (_margin + cellH * (row + 0.5) + jitterY)
-          .clamp(_margin + half, height - _margin - half);
-      placed.add(
-        ball.copyWith(
-          x: x,
-          y: y,
-          vx: 0,
-          vy: 0,
-          isOnBoard: true,
-        ),
-      );
-    }
-
-    return resolveOverlaps(
-      placed,
+    final count = layoutBallCount ?? balls.length;
+    final r = uniformBoardRadius(
+      ballCount: count,
       width: width,
       height: height,
-      ballCount: ballCount,
     );
+    final rowCounts = _fits(balls.length, r, width - 2 * _margin, height - 2 * _margin);
+    if (rowCounts == null) return balls;
+
+    final diameter = 2 * r;
+    final cols = math.max(1, ((width - 2 * _margin) / diameter).floor());
+    final gridW = cols * diameter;
+    final gridLeft = _margin + (width - 2 * _margin - gridW) / 2 + r;
+    final bottomY = height - _margin - r;
+
+    final placed = <Ball>[];
+    var index = 0;
+
+    for (var rowFromBottom = 0; rowFromBottom < rowCounts.length; rowFromBottom++) {
+      final ballsInRow = rowCounts[rowFromBottom];
+      final y = bottomY - rowFromBottom * diameter;
+      final rowW = ballsInRow * diameter;
+      final rowLeft = gridLeft + (gridW - rowW) / 2;
+
+      for (var col = 0; col < ballsInRow && index < balls.length; col++) {
+        placed.add(
+          balls[index].copyWith(
+            x: rowLeft + col * diameter,
+            y: y,
+            vx: 0,
+            vy: 0,
+            isOnBoard: true,
+          ),
+        );
+        index++;
+      }
+    }
+
+    return placed;
   }
 
   static List<Ball> layoutWordBalls({
@@ -107,7 +129,6 @@ abstract final class BoardLayout {
     required double width,
     required double height,
   }) {
-    if (balls.isEmpty) return balls;
     return layoutFragments(balls: balls, width: width, height: height);
   }
 
@@ -119,94 +140,12 @@ abstract final class BoardLayout {
     return ball.copyWith(x: width / 2, y: height * 0.42, vx: 0, vy: 0);
   }
 
-  /// Push overlapping balls apart while keeping them inside the playfield.
   static List<Ball> resolveOverlaps(
     List<Ball> balls, {
     required double width,
     required double height,
     int? ballCount,
   }) {
-    if (balls.length < 2) return balls;
-
-    final count = ballCount ?? balls.length;
-    var result = List<Ball>.from(balls);
-    for (var pass = 0; pass < 120; pass++) {
-      var moved = false;
-
-      for (var i = 0; i < result.length; i++) {
-        for (var j = i + 1; j < result.length; j++) {
-          final a = result[i];
-          final b = result[j];
-          if (!a.isOnBoard || !b.isOnBoard) continue;
-
-          final ra = _halfExtent(
-            a,
-            screenWidth: width,
-            ballCount: count,
-            boardHeight: height,
-          );
-          final rb = _halfExtent(
-            b,
-            screenWidth: width,
-            ballCount: count,
-            boardHeight: height,
-          );
-          final dx = b.x - a.x;
-          final dy = b.y - a.y;
-          var dist = math.sqrt(dx * dx + dy * dy);
-          final minDist = ra + rb + _minGap;
-
-          if (dist >= minDist) continue;
-
-          double nx;
-          double ny;
-          if (dist < 0.001) {
-            final angle = (i * 2.399963 + j) % (math.pi * 2);
-            nx = math.cos(angle);
-            ny = math.sin(angle);
-            dist = 0.001;
-          } else {
-            nx = dx / dist;
-            ny = dy / dist;
-          }
-
-          final push = (minDist - dist) / 2 + 1;
-          result[i] = a.copyWith(x: a.x - nx * push, y: a.y - ny * push);
-          result[j] = b.copyWith(x: b.x + nx * push, y: b.y + ny * push);
-          moved = true;
-        }
-      }
-
-      result = result
-          .map((b) => _clampToBounds(
-                b,
-                width: width,
-                height: height,
-                ballCount: count,
-              ))
-          .toList();
-
-      if (!moved) break;
-    }
-
-    return result;
-  }
-
-  static Ball _clampToBounds(
-    Ball ball, {
-    required double width,
-    required double height,
-    required int ballCount,
-  }) {
-    final r = _halfExtent(
-      ball,
-      screenWidth: width,
-      ballCount: ballCount,
-      boardHeight: height,
-    );
-    return ball.copyWith(
-      x: ball.x.clamp(_margin + r, width - _margin - r),
-      y: ball.y.clamp(_margin + r, height - _margin - r),
-    );
+    return balls;
   }
 }

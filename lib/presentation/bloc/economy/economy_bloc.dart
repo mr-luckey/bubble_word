@@ -80,9 +80,12 @@ class EconomyBloc extends Bloc<EconomyEvent, EconomyBlocState> {
       stars[event.levelId] = event.stars;
     }
     final nextLevel = event.levelId + 1;
+    final cappedNext = nextLevel > 1001 ? 1001 : nextLevel;
     final s = state.economy.copyWith(
       levelStars: stars,
-      currentLevel: nextLevel > state.economy.currentLevel ? nextLevel : state.economy.currentLevel,
+      currentLevel: cappedNext > state.economy.currentLevel
+          ? cappedNext
+          : state.economy.currentLevel,
     );
     await _persist(emit, s);
   }

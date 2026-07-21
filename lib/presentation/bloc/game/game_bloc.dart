@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/utils/ball_physics_engine.dart';
 import '../../../core/utils/board_layout.dart';
+import '../../../core/constants/app_dimensions.dart';
 import '../../../domain/entities/ball.dart';
 import '../../../domain/entities/enums.dart';
 import '../../../domain/entities/game_state.dart';
@@ -35,6 +36,7 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
         _physicsEngine = physicsEngine,
         super(const GameInitial()) {
     on<StartLevel>(_onStartLevel);
+    on<RelayoutBoard>(_onRelayoutBoard);
     on<TickPhysics>(_onTickPhysics);
     on<DragBallStart>(_onDragStart);
     on<DragBallUpdate>(_onDragUpdate);
@@ -60,6 +62,7 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
 
   double _boardWidth = 360;
   double _boardHeight = 480;
+  int _layoutBallCount = 0;
   String? _draggingId;
   double _dragOriginX = 0;
   double _dragOriginY = 0;
@@ -73,7 +76,38 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
       boardWidth: _boardWidth,
       boardHeight: _boardHeight,
     );
+    _layoutBallCount =
+        gameState.boardBalls.where((b) => b.isOnBoard).length;
     emit(GamePlaying(gameState));
+  }
+
+  void _onRelayoutBoard(RelayoutBoard event, Emitter<GameBlocState> emit) {
+    final current = state;
+    if (current is! GamePlaying) return;
+    if (current.gameState.phase != GamePhase.buildingWords) return;
+
+    _boardWidth = event.boardWidth;
+    _boardHeight = event.boardHeight;
+
+    final onBoard =
+        current.gameState.boardBalls.where((b) => b.isOnBoard).toList();
+    if (onBoard.isEmpty) return;
+
+    final laid = BoardLayout.layoutFragments(
+      balls: onBoard,
+      width: _boardWidth,
+      height: _boardHeight,
+      layoutBallCount: _layoutBallCount,
+    );
+    final byId = {for (final b in laid) b.id: b};
+    final boardBalls = current.gameState.boardBalls.map((b) {
+      if (!b.isOnBoard) return b;
+      final updated = byId[b.id];
+      if (updated == null) return b;
+      return b.copyWith(x: updated.x, y: updated.y);
+    }).toList();
+
+    emit(GamePlaying(current.gameState.copyWith(boardBalls: boardBalls)));
   }
 
   List<Ball> _separateBoard(List<Ball> balls) {
@@ -162,8 +196,8 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
     for (final b in current.gameState.boardBalls) {
       if (b.id == source.id || !b.isOnBoard) continue;
       final dist = _distance(source, b);
-      final mergeRange =
-          source.radiusFactor + b.radiusFactor + _mergeSnapPadding;
+      final mergeRadius = _boardBallRadius();
+      final mergeRange = mergeRadius * 2 + _mergeSnapPadding;
       if (dist <= mergeRange && dist < closestDist) {
         closestDist = dist;
         target = b;
@@ -306,40 +340,36 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
     final gs = current.gameState;
     if (gs.phase != GamePhase.buildingWords) return;
 
-    for (final word in gs.level.words) {
-      if (gs.completedWordIds.contains(word.id)) continue;
-      final fragments = gs.boardBalls
-          .where((b) =>
-              b.type != BallType.decoy &&
-              b.wordId == word.id &&
-              (b.type == BallType.fragment ||
-                  b.type == BallType.wordInProgress))
-          .toList();
+    final fragments = gs.boardBalls
+        .where((b) =>
+            b.type != BallType.decoy &&
+            (b.type == BallType.fragment ||
+                b.type == BallType.wordInProgress))
+        .toList();
 
-      for (var i = 0; i < fragments.length; i++) {
-        for (var j = i + 1; j < fragments.length; j++) {
-          final a = fragments[i];
-          final b = fragments[j];
-          final mergeA = _validateMerge(
-            source: a,
-            target: b,
-            level: gs.level,
-            phase: gs.phase,
-          );
-          final mergeB = _validateMerge(
-            source: b,
-            target: a,
-            level: gs.level,
-            phase: gs.phase,
-          );
-          if ((mergeA?.isCorrect ?? false) || (mergeB?.isCorrect ?? false)) {
-            final ids = [a.id, b.id];
-            final balls = gs.boardBalls.map((ball) {
-              return ball.copyWith(isHighlighted: ids.contains(ball.id));
-            }).toList();
-            emit(GamePlaying(gs.copyWith(boardBalls: balls, hintBallIds: ids)));
-            return;
-          }
+    for (var i = 0; i < fragments.length; i++) {
+      for (var j = i + 1; j < fragments.length; j++) {
+        final a = fragments[i];
+        final b = fragments[j];
+        final mergeA = _validateMerge(
+          source: a,
+          target: b,
+          level: gs.level,
+          phase: gs.phase,
+        );
+        final mergeB = _validateMerge(
+          source: b,
+          target: a,
+          level: gs.level,
+          phase: gs.phase,
+        );
+        if ((mergeA?.isCorrect ?? false) || (mergeB?.isCorrect ?? false)) {
+          final ids = [a.id, b.id];
+          final balls = gs.boardBalls.map((ball) {
+            return ball.copyWith(isHighlighted: ids.contains(ball.id));
+          }).toList();
+          emit(GamePlaying(gs.copyWith(boardBalls: balls, hintBallIds: ids)));
+          return;
         }
       }
     }
@@ -351,7 +381,17 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
     var gs = current.gameState;
     final word = gs.level.words.firstWhere((w) => w.id == event.wordId);
 
-    final wordBalls = gs.boardBalls.where((b) => b.wordId == word.id).toList();
+    final wordBalls = gs.boardBalls.where((b) {
+      if (b.type == BallType.decoy ||
+          b.type == BallType.completeWord ||
+          b.type == BallType.junk) {
+        return false;
+      }
+      if (b.wordId == word.id) return true;
+      if (word.fragments.contains(b.chars)) return true;
+      return b.type == BallType.wordInProgress &&
+          word.text.startsWith(b.chars);
+    }).toList();
     if (wordBalls.length < 2) return;
 
     var combined = wordBalls.first;
@@ -457,7 +497,19 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
   }
 
   void _onReset(ResetGame event, Emitter<GameBlocState> emit) {
+    _layoutBallCount = 0;
     emit(const GameInitial());
+  }
+
+  double _boardBallRadius() {
+    if (_layoutBallCount <= 0) {
+      return AppDimensions.ballRadiusSmall;
+    }
+    return BoardLayout.uniformBoardRadius(
+      ballCount: _layoutBallCount,
+      width: _boardWidth,
+      height: _boardHeight,
+    );
   }
 
   Ball? _findBall(GameState gs, String id) {

@@ -65,4 +65,43 @@ abstract final class AppColors {
   static List<Color> forCategory(String category) {
     return ballColors[category] ?? ballColors['default']!;
   }
+
+  /// Vibrant gel-bubble palette (reference screenshot).
+  static const List<List<Color>> marblePalette = [
+    [Color(0xFFFF4D4D), Color(0xFFE53935)],
+    [Color(0xFF3D8BFF), Color(0xFF1E6FE8)],
+    [Color(0xFF6FE647), Color(0xFF43C843)],
+    [Color(0xFFFFB020), Color(0xFFFF8C00)],
+    [Color(0xFFB44DFF), Color(0xFF8E24FF)],
+    [Color(0xFFFF5DA2), Color(0xFFE91E8C)],
+    [Color(0xFF2ED9E8), Color(0xFF00ACC1)],
+    [Color(0xFFFFEB3B), Color(0xFFFFC107)],
+    [Color(0xFF7C6CFF), Color(0xFF5C4DFF)],
+    [Color(0xFF26D9A3), Color(0xFF00BFA5)],
+  ];
+
+  static const Color neonPurple = Color(0xFFB388FF);
+  static const Color neonGold = Color(0xFFFFD54F);
+
+  static const Map<String, List<Color>> wordMarbleColors = {
+    'RED': [Color(0xFFFF4D4D), Color(0xFFE53935)],
+    'BLUE': [Color(0xFF3D8BFF), Color(0xFF1E6FE8)],
+    'GREEN': [Color(0xFF6FE647), Color(0xFF43C843)],
+    'YELLOW': [Color(0xFFFFEB3B), Color(0xFFFFC107)],
+    'ORANGE': [Color(0xFFFFB020), Color(0xFFFF8C00)],
+    'PINK': [Color(0xFFFF5DA2), Color(0xFFE91E8C)],
+    'PURPLE': [Color(0xFFB44DFF), Color(0xFF8E24FF)],
+    'WHITE': [Color(0xFFF5F5F5), Color(0xFFB0BEC5)],
+    'BLACK': [Color(0xFF607D8B), Color(0xFF37474F)],
+  };
+
+  static List<Color> marbleForBall(String ballId) {
+    final i = ballId.hashCode.abs() % marblePalette.length;
+    return marblePalette[i];
+  }
+
+  static List<Color> marbleForWordChip(String word) {
+    return wordMarbleColors[word.toUpperCase()] ??
+        marblePalette[word.hashCode.abs() % marblePalette.length];
+  }
 }

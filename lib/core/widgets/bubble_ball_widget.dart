@@ -9,7 +9,7 @@ import '../constants/app_colors.dart';
 import '../constants/app_dimensions.dart';
 import '../theme/app_text_styles.dart';
 
-/// Glossy 3D glass bubble — styled after Bouncy Match reference app.
+/// Flat glossy 2D marble bubble (reference screenshot style).
 class BubbleBallWidget extends StatefulWidget {
   const BubbleBallWidget({
     super.key,
@@ -25,7 +25,6 @@ class BubbleBallWidget extends StatefulWidget {
   });
 
   final Ball ball;
-  /// When set, keeps render size in sync with [BoardLayout] placement.
   final double? radius;
   final GestureDragStartCallback? onPanStart;
   final GestureDragUpdateCallback? onPanUpdate;
@@ -93,9 +92,6 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
             AppDimensions.scaledBallRadius(
               context,
               charCount: widget.ball.chars.length,
-              isWord: widget.ball.type == BallType.completeWord ||
-                  widget.ball.type == BallType.wordInProgress,
-              isSuper: widget.ball.type == BallType.superBall,
               isDecoy: widget.ball.type == BallType.decoy,
             );
     final size = AppDimensions.visualBallSize(radius) + (widget.compact ? -12 : 0);
@@ -110,15 +106,15 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
         final floatY = !widget.compact &&
                 widget.enableIdleFloat &&
                 !widget.ball.isDragging
-            ? math.sin(_floatController.value * math.pi * 2) * 4
+            ? math.sin(_floatController.value * math.pi * 2) * 2
             : 0.0;
         final shakeX = widget.ball.type == BallType.junk
             ? math.sin(_shakeController.value * math.pi * 8) * 10
             : 0.0;
         final snapScale = widget.mergeSnapping
-            ? 1.0 + Curves.elasticOut.transform(_snapController.value) * 0.2
+            ? 1.0 + Curves.elasticOut.transform(_snapController.value) * 0.15
             : 1.0;
-        final dragScale = widget.ball.isDragging ? 1.15 : 1.0;
+        final dragScale = widget.ball.isDragging ? 1.1 : 1.0;
 
         return Transform.translate(
           offset: Offset(shakeX, floatY),
@@ -132,7 +128,7 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
                 width: size,
                 height: size,
                 child: CustomPaint(
-                  painter: _GlassBubblePainter(
+                  painter: _MarbleBallPainter(
                     ball: widget.ball,
                     radius: radius,
                     showProgressRing: widget.showProgressRing,
@@ -142,9 +138,9 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: radius * 0.12),
+                        padding: EdgeInsets.symmetric(horizontal: radius * 0.08),
                         child: Text(
-                          _displayText(),
+                          widget.ball.chars,
                           textAlign: TextAlign.center,
                           maxLines: 1,
                           style: AppTextStyles.ballText(context, radius: radius),
@@ -160,12 +156,10 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
       },
     );
   }
-
-  String _displayText() => widget.ball.chars;
 }
 
-class _GlassBubblePainter extends CustomPainter {
-  _GlassBubblePainter({
+class _MarbleBallPainter extends CustomPainter {
+  _MarbleBallPainter({
     required this.ball,
     required this.radius,
     required this.showProgressRing,
@@ -180,85 +174,101 @@ class _GlassBubblePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final colors = _innerColors();
+    final colors = _marbleColors();
+    final base = colors.first;
+    final shade = colors.last;
+    final ballRect = Rect.fromCircle(center: center, radius: radius);
 
-    // Outer glow (blue rim like reference)
-    if (ball.type != BallType.junk) {
-      final glowPaint = Paint()
-        ..color = (isDragging ? AppColors.bubbleGlow : AppColors.bubbleGlow)
-            .withValues(alpha: isDragging ? 0.7 : 0.45)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, isDragging ? 16 : 10);
-      canvas.drawCircle(center, radius + 6, glowPaint);
-    }
+    canvas.save();
+    canvas.clipPath(Path()..addOval(ballRect));
 
-    // Drop shadow
     canvas.drawCircle(
-      center.translate(0, 4),
+      center,
       radius,
       Paint()
-        ..color = Colors.black.withValues(alpha: 0.35)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+        ..shader = ui.Gradient.radial(
+          center.translate(-radius * 0.12, -radius * 0.14),
+          radius * 1.05,
+          [
+            Color.lerp(base, Colors.white, 0.16)!,
+            base,
+            Color.lerp(shade, Colors.black, 0.08)!,
+          ],
+          [0.0, 0.55, 1.0],
+        ),
     );
 
-    // Main glass sphere
-    final spherePaint = Paint()
-      ..shader = ui.Gradient.radial(
-        center.translate(-radius * 0.25, -radius * 0.3),
-        radius * 1.3,
-        [
-          Colors.white.withValues(alpha: 0.85),
-          colors[0].withValues(alpha: 0.95),
-          colors.length > 1 ? colors[1] : colors[0],
-          colors[0].withValues(alpha: 0.9),
-        ],
-        [0.0, 0.2, 0.65, 1.0],
-      );
-    canvas.drawCircle(center, radius, spherePaint);
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..shader = ui.Gradient.radial(
+          center.translate(radius * 0.32, radius * 0.34),
+          radius * 0.92,
+          [Colors.transparent, Colors.black.withValues(alpha: 0.2)],
+          [0.45, 1.0],
+        )
+        ..blendMode = BlendMode.multiply,
+    );
 
-    // Inner depth
-    final innerShadow = Paint()
-      ..shader = ui.Gradient.radial(
-        center.translate(radius * 0.2, radius * 0.25),
-        radius * 0.9,
-        [
-          Colors.transparent,
-          Colors.black.withValues(alpha: 0.25),
-        ],
-        [0.5, 1.0],
-      );
-    canvas.drawCircle(center, radius, innerShadow);
-
-    // Specular highlight
     canvas.drawOval(
       Rect.fromCenter(
-        center: center.translate(-radius * 0.22, -radius * 0.28),
-        width: radius * 0.55,
-        height: radius * 0.35,
+        center: center.translate(-radius * 0.16, -radius * 0.24),
+        width: radius * 1.02,
+        height: radius * 0.48,
       ),
-      Paint()..color = Colors.white.withValues(alpha: 0.55),
+      Paint()..color = Colors.white.withValues(alpha: 0.36),
     );
 
-    // Rim light
-    final rimPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..color = Colors.white.withValues(alpha: 0.35);
-    canvas.drawCircle(center, radius - 1, rimPaint);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: center.translate(-radius * 0.26, -radius * 0.34),
+        width: radius * 0.38,
+        height: radius * 0.17,
+      ),
+      Paint()..color = Colors.white.withValues(alpha: 0.58),
+    );
+
+    canvas.restore();
+
+    canvas.drawCircle(
+      center,
+      radius - 1,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.4
+        ..color = Colors.white.withValues(alpha: 0.45),
+    );
+
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = Color.lerp(shade, Colors.black, 0.15)!.withValues(alpha: 0.28),
+    );
 
     if (ball.isHighlighted) {
-      final hintPaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3
-        ..color = AppColors.accentGold;
-      canvas.drawCircle(center, radius + 5, hintPaint);
+      canvas.drawCircle(
+        center,
+        radius + 2,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3
+          ..color = AppColors.neonGold,
+      );
     }
 
     if (ball.type == BallType.completeWord) {
-      final donePaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5
-        ..color = AppColors.accentGreen.withValues(alpha: 0.8);
-      canvas.drawCircle(center, radius + 4, donePaint);
+      canvas.drawCircle(
+        center,
+        radius + 2,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5
+          ..color = AppColors.accentGreen,
+      );
     }
 
     if (ball.type == BallType.junk) {
@@ -277,12 +287,12 @@ class _GlassBubblePainter extends CustomPainter {
         ball.mergeTotal > 0) {
       final progress = ball.mergeProgress / ball.mergeTotal;
       canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius + 7),
+        Rect.fromCircle(center: center, radius: radius + 3),
         -math.pi / 2,
         math.pi * 2 * progress,
         false,
         Paint()
-          ..color = AppColors.accentGold
+          ..color = AppColors.neonGold
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3
           ..strokeCap = StrokeCap.round,
@@ -292,7 +302,7 @@ class _GlassBubblePainter extends CustomPainter {
     if (ball.type == BallType.superBall) {
       for (var i = 0; i < AppColors.superBallGradient.length; i++) {
         canvas.drawArc(
-          Rect.fromCircle(center: center, radius: radius + 5),
+          Rect.fromCircle(center: center, radius: radius + 3),
           (math.pi * 2 / AppColors.superBallGradient.length) * i,
           math.pi * 2 / AppColors.superBallGradient.length,
           false,
@@ -305,19 +315,22 @@ class _GlassBubblePainter extends CustomPainter {
     }
   }
 
-  List<Color> _innerColors() {
+  List<Color> _marbleColors() {
     if (ball.type == BallType.junk) {
-      return [AppColors.junkGrey, const Color(0xFF4A5568)];
+      return [const Color(0xFF78909C), const Color(0xFF455A64)];
     }
     if (ball.type == BallType.superBall) {
-      return [AppColors.nebulaPurple, AppColors.bubbleCore];
+      return [AppColors.nebulaPurple, AppColors.nebulaBlue];
     }
-    final cat = AppColors.forCategory(ball.category);
-    return [cat[0], cat.length > 1 ? cat[1] : AppColors.bubbleDeep];
+    if (ball.type == BallType.completeWord ||
+        ball.type == BallType.wordInProgress) {
+      return AppColors.marbleForWordChip(ball.chars);
+    }
+    return AppColors.marbleForBall(ball.id);
   }
 
   @override
-  bool shouldRepaint(covariant _GlassBubblePainter oldDelegate) =>
+  bool shouldRepaint(covariant _MarbleBallPainter oldDelegate) =>
       oldDelegate.ball != ball ||
       oldDelegate.radius != radius ||
       oldDelegate.isDragging != isDragging;

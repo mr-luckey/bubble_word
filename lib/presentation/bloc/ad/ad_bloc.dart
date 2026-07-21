@@ -2,6 +2,8 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import '../../../core/constants/ad_constants.dart';
+
 part 'ad_event.dart';
 part 'ad_state.dart';
 
@@ -17,8 +19,8 @@ class AdBloc extends Bloc<AdEvent, AdBlocState> {
   RewardedAd? _rewardedAd;
   InterstitialAd? _interstitialAd;
 
-  static const rewardedTestId = 'ca-app-pub-3940256099942544/5224354917';
-  static const interstitialTestId = 'ca-app-pub-3940256099942544/1033173712';
+  static const rewardedTestId = AdConstants.rewardedTestId;
+  static const interstitialTestId = AdConstants.interstitialTestId;
 
   Future<void> _onInit(InitializeAds event, Emitter<AdBlocState> emit) async {
     await MobileAds.instance.initialize();

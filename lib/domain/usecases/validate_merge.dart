@@ -1,6 +1,7 @@
 import '../entities/ball.dart';
 import '../entities/enums.dart';
 import '../entities/level.dart';
+import '../entities/word.dart';
 
 class MergeResult {
   const MergeResult({
@@ -66,20 +67,11 @@ class ValidateMerge {
       return null;
     }
 
-    if (source.wordId != target.wordId) {
-      return null;
-    }
+    final match = _findMatchingWord(source, target, level);
+    if (match == null) return null;
 
-    final word = level.words.firstWhere(
-      (w) => w.id == source.wordId,
-      orElse: () => level.words.first,
-    );
-
-    final combined = _bestCombination(target.chars, source.chars, word.text);
-    if (combined == null) {
-      return null;
-    }
-
+    final word = match.word;
+    final combined = match.combined;
     final progress = _countMergedFragments(combined, word);
     final isComplete = combined == word.text;
 
@@ -90,6 +82,8 @@ class ValidateMerge {
       targetBall: target,
       resultBall: target.copyWith(
         chars: combined,
+        wordId: word.id,
+        category: level.category,
         type: isComplete ? BallType.completeWord : BallType.wordInProgress,
         mergeProgress: progress,
         mergeTotal: word.fragments.length,
@@ -103,6 +97,43 @@ class ValidateMerge {
     );
   }
 
+  _WordMatch? _findMatchingWord(Ball source, Ball target, Level level) {
+    final preferred = <String>[];
+
+    for (final ball in [target, source]) {
+      if (ball.type == BallType.wordInProgress) {
+        preferred.add(ball.wordId);
+      }
+    }
+    for (final ball in [target, source]) {
+      if (ball.type == BallType.fragment && !preferred.contains(ball.wordId)) {
+        preferred.add(ball.wordId);
+      }
+    }
+
+    for (final wordId in preferred) {
+      final word = _wordById(level, wordId);
+      if (word == null) continue;
+      final combined = _bestCombination(target.chars, source.chars, word.text);
+      if (combined != null) return _WordMatch(word, combined);
+    }
+
+    for (final word in level.words) {
+      if (preferred.contains(word.id)) continue;
+      final combined = _bestCombination(target.chars, source.chars, word.text);
+      if (combined != null) return _WordMatch(word, combined);
+    }
+
+    return null;
+  }
+
+  Word? _wordById(Level level, String id) {
+    for (final word in level.words) {
+      if (word.id == id) return word;
+    }
+    return null;
+  }
+
   String? _bestCombination(String a, String b, String fullWord) {
     for (final c in ['$a$b', '$b$a']) {
       if (c == fullWord || fullWord.startsWith(c)) return c;
@@ -110,11 +141,17 @@ class ValidateMerge {
     return null;
   }
 
-  int _countMergedFragments(String combined, word) {
+  int _countMergedFragments(String combined, Word word) {
     var count = 0;
     for (final f in word.fragments) {
       if (combined.contains(f)) count++;
     }
     return count.clamp(1, word.fragments.length).toInt();
   }
+}
+
+class _WordMatch {
+  const _WordMatch(this.word, this.combined);
+  final Word word;
+  final String combined;
 }
