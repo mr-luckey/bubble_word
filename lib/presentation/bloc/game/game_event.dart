@@ -26,6 +26,10 @@ class RelayoutBoard extends GameEvent {
   List<Object?> get props => [boardWidth, boardHeight];
 }
 
+class TickLevelTimer extends GameEvent {
+  const TickLevelTimer();
+}
+
 class TickPhysics extends GameEvent {
   const TickPhysics({
     required this.deltaTime,

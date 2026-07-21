@@ -33,18 +33,21 @@ void main() {
   });
 
   group('CalculateStarRating', () {
-    test('returns 3 stars when 30%+ moves remain', () {
-      final rating = CalculateStarRating().call(movesLeft: 8, movesTotal: 20);
+    test('returns 3 stars when 30%+ time remains', () {
+      final rating =
+          CalculateStarRating().call(timeLeftSeconds: 60, timeTotalSeconds: 90);
       expect(rating, 3);
     });
 
-    test('returns 2 stars when 10-30% moves remain', () {
-      final rating = CalculateStarRating().call(movesLeft: 3, movesTotal: 20);
+    test('returns 2 stars when 10-30% time remains', () {
+      final rating =
+          CalculateStarRating().call(timeLeftSeconds: 15, timeTotalSeconds: 90);
       expect(rating, 2);
     });
 
-    test('returns 1 star when less than 10% remain', () {
-      final rating = CalculateStarRating().call(movesLeft: 1, movesTotal: 20);
+    test('returns 1 star when less than 10% remains', () {
+      final rating =
+          CalculateStarRating().call(timeLeftSeconds: 5, timeTotalSeconds: 90);
       expect(rating, 1);
     });
   });

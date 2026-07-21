@@ -92,13 +92,6 @@ class _LevelCompleteOverlayState extends State<LevelCompleteOverlay>
                       ),
                       const SizedBox(height: AppDimensions.paddingM),
                       Text(
-                        '+${widget.gameState.coinsEarned} ${AppStrings.coins}',
-                        style: AppTextStyles.subheading(context).copyWith(
-                          color: AppColors.accentGold,
-                        ),
-                      ),
-                      const SizedBox(height: AppDimensions.paddingS),
-                      Text(
                         words,
                         style: AppTextStyles.body(context).copyWith(
                           color: Colors.white70,

@@ -27,7 +27,12 @@ GoRouter createRouter() {
         path: '/game/:levelId',
         builder: (_, state) {
           final id = int.parse(state.pathParameters['levelId']!);
-          return GameScreen(key: ValueKey('game-$id'), levelId: id);
+          final isDaily = state.uri.queryParameters['daily'] == 'true';
+          return GameScreen(
+            key: ValueKey('game-$id-daily-$isDaily'),
+            levelId: id,
+            isDailyChallenge: isDaily,
+          );
         },
       ),
       GoRoute(

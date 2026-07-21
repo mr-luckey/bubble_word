@@ -52,7 +52,7 @@ enum Difficulty {
 }
 
 enum FailReason {
-  movesExhausted,
+  timeOut,
   boardOverload,
 }
 

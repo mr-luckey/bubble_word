@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -8,6 +9,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_dimensions.dart';
+import '../../core/constants/game_constants.dart';
 import '../../core/di/injection.dart';
 import '../../core/router/app_router.dart';
 import '../../core/utils/audio_service.dart';
@@ -32,9 +34,14 @@ import 'level_complete_overlay.dart';
 import 'level_fail_overlay.dart';
 
 class GameScreen extends StatefulWidget {
-  const GameScreen({super.key, required this.levelId});
+  const GameScreen({
+    super.key,
+    required this.levelId,
+    this.isDailyChallenge = false,
+  });
 
   final int levelId;
+  final bool isDailyChallenge;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -53,6 +60,8 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   Offset _dragTouchOffset = Offset.zero;
   AnimationController? _dropController;
   _PendingAdAction? _pendingAd;
+  Timer? _levelTimer;
+  bool _lifeSpentForFail = false;
 
   @override
   void initState() {
@@ -70,6 +79,8 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       _levelStarted = false;
       _layoutBallCount = 0;
       _dropComplete = false;
+      _lifeSpentForFail = false;
+      _stopLevelTimer();
     }
   }
 
@@ -91,8 +102,23 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
         if (mounted) setState(() {});
       });
     _dropController!.forward().whenComplete(() {
-      if (mounted) setState(() => _dropComplete = true);
+      if (mounted) {
+        setState(() => _dropComplete = true);
+        _startLevelTimer();
+      }
     });
+  }
+
+  void _startLevelTimer() {
+    _levelTimer?.cancel();
+    _levelTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) _gameBloc.add(const TickLevelTimer());
+    });
+  }
+
+  void _stopLevelTimer() {
+    _levelTimer?.cancel();
+    _levelTimer = null;
   }
 
   double _ballDisplayY(Ball ball, double minY, double maxY) {
@@ -203,17 +229,12 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
         } else {
           _showSnackBar('Watch the full ad to get a hint');
         }
-      case _PendingAdAction.continueMoves:
-        if (state.rewarded) {
-          _gameBloc.add(const AddExtraMoves());
-        } else {
-          _showSnackBar('Watch the full ad for +5 moves');
-        }
     }
   }
 
   @override
   void dispose() {
+    _stopLevelTimer();
     _dropController?.dispose();
     _levelBloc.close();
     _gameBloc.close();
@@ -268,18 +289,32 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
           BlocListener<GameBloc, GameBlocState>(
             listener: (context, state) {
               if (state is GameWon) {
+                _stopLevelTimer();
                 getIt<AudioService>().playWin();
-                final economy = context.read<EconomyBloc>();
-                final levelsBefore = economy.state.economy.levelsCompletedSinceAd;
-                economy.add(CompleteLevel(
-                  levelId: state.gameState.level.id,
-                  stars: state.stars,
-                  coinsEarned: state.coinsEarned,
-                ));
-                if (!economy.state.economy.noAdsPurchased &&
-                    levelsBefore + 1 >= 3) {
-                  context.read<AdBloc>().add(const ShowInterstitialAd());
-                  economy.add(const ResetLevelsCompletedAd());
+                if (!widget.isDailyChallenge) {
+                  final economy = context.read<EconomyBloc>();
+                  final levelsBefore =
+                      economy.state.economy.levelsCompletedSinceAd;
+                  economy.add(CompleteLevel(
+                    levelId: state.gameState.level.id,
+                    stars: state.stars,
+                  ));
+                  if (!economy.state.economy.noAdsPurchased &&
+                      levelsBefore + 1 >= 3) {
+                    context.read<AdBloc>().add(const ShowInterstitialAd());
+                    economy.add(const ResetLevelsCompletedAd());
+                  }
+                }
+              } else if (state is GameFailed) {
+                _stopLevelTimer();
+                if (!_lifeSpentForFail) {
+                  _lifeSpentForFail = true;
+                  final economy = context.read<EconomyBloc>();
+                  if (widget.isDailyChallenge) {
+                    economy.add(const SpendGoldenHeart());
+                  } else {
+                    economy.add(const SpendLife());
+                  }
                 }
               }
             },
@@ -308,22 +343,26 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                           Expanded(
                             child: LevelCompleteOverlay(
                               gameState: gameState,
-                              onNext: () {
-                                final economy = getIt<EconomyBloc>();
-                                if (economy.state.economy.lives <= 0) {
-                                  context.go('/home');
-                                  return;
-                                }
-                                economy.add(const SpendLife());
-                                economy.add(const ResetLevelBoosterFlags());
-                                final next = widget.levelId + 1;
-                                if (next <= 1000) {
-                                  context.go('/game/$next');
-                                } else {
-                                  context.go('/home');
-                                }
-                              },
-                              onHome: () => context.go('/home'),
+                              onNext: widget.isDailyChallenge
+                                  ? () => context.go('/daily')
+                                  : () {
+                                      final economy = getIt<EconomyBloc>();
+                                      if (economy.state.economy.lives <= 0) {
+                                        context.go('/home');
+                                        return;
+                                      }
+                                      economy.add(const ResetLevelBoosterFlags());
+                                      _lifeSpentForFail = false;
+                                      final next = widget.levelId + 1;
+                                      if (next <= 1000) {
+                                        context.go('/game/$next');
+                                      } else {
+                                        context.go('/home');
+                                      }
+                                    },
+                              onHome: widget.isDailyChallenge
+                                  ? () => context.go('/daily')
+                                  : () => context.go('/home'),
                             ),
                           ),
                           const BannerAdWidget(),
@@ -336,7 +375,15 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                           Expanded(
                             child: LevelFailOverlay(
                               gameState: gameState,
+                              isDailyChallenge: widget.isDailyChallenge,
                               onRetry: () {
+                                final economy =
+                                    context.read<EconomyBloc>().state.economy;
+                                final canRetry = widget.isDailyChallenge
+                                    ? economy.goldenHearts > 0
+                                    : economy.lives > 0;
+                                if (!canRetry) return;
+                                _lifeSpentForFail = false;
                                 _levelStarted = false;
                                 _dropComplete = false;
                                 _gameBloc.add(StartLevel(
@@ -346,15 +393,9 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                 ));
                                 _startDropAnimation();
                               },
-                              onWatchAd: () {
-                                _pendingAd = _PendingAdAction.continueMoves;
-                                context.read<AdBloc>().add(const ShowRewardedAd());
-                              },
-                              onSpendCoins: () {
-                                context.read<EconomyBloc>().add(const SpendCoins(100));
-                                _gameBloc.add(const AddExtraMoves());
-                              },
-                              onHome: () => context.go('/home'),
+                              onHome: widget.isDailyChallenge
+                                  ? () => context.go('/daily')
+                                  : () => context.go('/home'),
                             ),
                           ),
                           const BannerAdWidget(),
@@ -452,6 +493,8 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
             levelId: levelState.level.id,
             wordsComplete: 0,
             wordsTotal: levelState.level.wordCount,
+            timeLeftSeconds:
+                levelState.level.wordCount * GameConstants.secondsPerWord,
             onBack: () => context.go('/home'),
             hintCount: econState.economy.boosters.hint,
             onHint: () => _handleHint(context),
@@ -496,6 +539,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
             levelId: gs.level.id,
             wordsComplete: gs.completedWordIds.length,
             wordsTotal: gs.level.wordCount,
+            timeLeftSeconds: gs.timeLeftSeconds,
             onBack: () => context.go('/home'),
             hintCount: econState.economy.boosters.hint,
             onHint: () => _handleHint(context),
@@ -576,7 +620,6 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
 enum _PendingAdAction {
   hintInterstitial,
   hintRewarded,
-  continueMoves,
 }
 
 extension _FirstOrNull<E> on Iterable<E> {

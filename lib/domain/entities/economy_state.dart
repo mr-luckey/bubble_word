@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../../core/constants/game_constants.dart';
+
 class BoosterInventory extends Equatable {
   const BoosterInventory({
     this.hint = 3,
@@ -67,11 +69,12 @@ class BoosterInventory extends Equatable {
 
 class EconomyState extends Equatable {
   const EconomyState({
-    this.coins = 100,
-    this.lives = 5,
-    this.maxLives = 5,
+    this.lives = GameConstants.maxHearts,
+    this.maxLives = GameConstants.maxHearts,
     this.lifeRefillSeconds = 0,
-    this.goldenHearts = 3,
+    this.goldenHearts = GameConstants.maxGoldenHearts,
+    this.maxGoldenHearts = GameConstants.maxGoldenHearts,
+    this.goldenHeartRefillSeconds = 0,
     this.dailyStreak = 0,
     this.levelsCompletedSinceAd = 0,
     this.noAdsPurchased = false,
@@ -80,11 +83,12 @@ class EconomyState extends Equatable {
     this.boosters = const BoosterInventory(),
   });
 
-  final int coins;
   final int lives;
   final int maxLives;
   final int lifeRefillSeconds;
   final int goldenHearts;
+  final int maxGoldenHearts;
+  final int goldenHeartRefillSeconds;
   final int dailyStreak;
   final int levelsCompletedSinceAd;
   final bool noAdsPurchased;
@@ -93,11 +97,12 @@ class EconomyState extends Equatable {
   final BoosterInventory boosters;
 
   EconomyState copyWith({
-    int? coins,
     int? lives,
     int? maxLives,
     int? lifeRefillSeconds,
     int? goldenHearts,
+    int? maxGoldenHearts,
+    int? goldenHeartRefillSeconds,
     int? dailyStreak,
     int? levelsCompletedSinceAd,
     bool? noAdsPurchased,
@@ -106,11 +111,13 @@ class EconomyState extends Equatable {
     BoosterInventory? boosters,
   }) {
     return EconomyState(
-      coins: coins ?? this.coins,
       lives: lives ?? this.lives,
       maxLives: maxLives ?? this.maxLives,
       lifeRefillSeconds: lifeRefillSeconds ?? this.lifeRefillSeconds,
       goldenHearts: goldenHearts ?? this.goldenHearts,
+      maxGoldenHearts: maxGoldenHearts ?? this.maxGoldenHearts,
+      goldenHeartRefillSeconds:
+          goldenHeartRefillSeconds ?? this.goldenHeartRefillSeconds,
       dailyStreak: dailyStreak ?? this.dailyStreak,
       levelsCompletedSinceAd:
           levelsCompletedSinceAd ?? this.levelsCompletedSinceAd,
@@ -123,11 +130,12 @@ class EconomyState extends Equatable {
 
   @override
   List<Object?> get props => [
-        coins,
         lives,
         maxLives,
         lifeRefillSeconds,
         goldenHearts,
+        maxGoldenHearts,
+        goldenHeartRefillSeconds,
         dailyStreak,
         levelsCompletedSinceAd,
         noAdsPurchased,

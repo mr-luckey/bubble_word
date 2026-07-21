@@ -11,7 +11,7 @@ class CheckBoardOverload {
 
   bool call(GameState state, {required int maxBalls}) {
     if (state.phase != GamePhase.buildingWords) return false;
-    if (state.movesLeft > 0) {
+    if (state.timeLeftSeconds > 0) {
       final onBoard = state.boardBalls.where((b) => b.isOnBoard).length;
       if (onBoard < maxBalls) return false;
     }

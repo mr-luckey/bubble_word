@@ -10,8 +10,8 @@ class GameState extends Equatable {
     required this.boardBalls,
     required this.trayBalls,
     required this.queue,
-    required this.movesLeft,
-    required this.movesTotal,
+    required this.timeLeftSeconds,
+    required this.timeTotalSeconds,
     required this.completedWordIds,
     required this.lastWrongMergeBallId,
     this.draggingBallId,
@@ -26,8 +26,8 @@ class GameState extends Equatable {
   final List<Ball> boardBalls;
   final List<Ball> trayBalls;
   final List<Ball> queue;
-  final int movesLeft;
-  final int movesTotal;
+  final int timeLeftSeconds;
+  final int timeTotalSeconds;
   final List<String> completedWordIds;
   final String? lastWrongMergeBallId;
   final String? draggingBallId;
@@ -47,8 +47,8 @@ class GameState extends Equatable {
     List<Ball>? boardBalls,
     List<Ball>? trayBalls,
     List<Ball>? queue,
-    int? movesLeft,
-    int? movesTotal,
+    int? timeLeftSeconds,
+    int? timeTotalSeconds,
     List<String>? completedWordIds,
     String? lastWrongMergeBallId,
     String? draggingBallId,
@@ -66,8 +66,8 @@ class GameState extends Equatable {
       boardBalls: boardBalls ?? this.boardBalls,
       trayBalls: trayBalls ?? this.trayBalls,
       queue: queue ?? this.queue,
-      movesLeft: movesLeft ?? this.movesLeft,
-      movesTotal: movesTotal ?? this.movesTotal,
+      timeLeftSeconds: timeLeftSeconds ?? this.timeLeftSeconds,
+      timeTotalSeconds: timeTotalSeconds ?? this.timeTotalSeconds,
       completedWordIds: completedWordIds ?? this.completedWordIds,
       lastWrongMergeBallId: clearLastWrong
           ? null
@@ -88,8 +88,8 @@ class GameState extends Equatable {
         boardBalls,
         trayBalls,
         queue,
-        movesLeft,
-        movesTotal,
+        timeLeftSeconds,
+        timeTotalSeconds,
         completedWordIds,
         lastWrongMergeBallId,
         draggingBallId,

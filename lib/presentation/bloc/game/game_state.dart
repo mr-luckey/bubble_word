@@ -20,13 +20,12 @@ class GamePlaying extends GameBlocState {
 }
 
 class GameWon extends GameBlocState {
-  const GameWon(this.gameState, {required this.stars, required this.coinsEarned});
+  const GameWon(this.gameState, {required this.stars});
   final GameState gameState;
   final int stars;
-  final int coinsEarned;
 
   @override
-  List<Object?> get props => [gameState, stars, coinsEarned];
+  List<Object?> get props => [gameState, stars];
 }
 
 class GameFailed extends GameBlocState {
@@ -34,13 +33,11 @@ class GameFailed extends GameBlocState {
     this.gameState,
     this.reason, {
     required this.stars,
-    required this.coinsEarned,
   });
   final GameState gameState;
   final FailReason reason;
   final int stars;
-  final int coinsEarned;
 
   @override
-  List<Object?> get props => [gameState, reason, stars, coinsEarned];
+  List<Object?> get props => [gameState, reason, stars];
 }

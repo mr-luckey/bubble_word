@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -9,7 +8,6 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/di/injection.dart';
 import '../../domain/usecases/get_level.dart';
-import '../bloc/economy/economy_bloc.dart';
 
 /// Cached total level count — loaded once per app session.
 int? _cachedTotalLevels;
@@ -107,7 +105,6 @@ class _LevelMapViewState extends State<LevelMapView>
       );
       return;
     }
-    context.read<EconomyBloc>().add(const SpendLife());
     context.go('/game/$level');
   }
 

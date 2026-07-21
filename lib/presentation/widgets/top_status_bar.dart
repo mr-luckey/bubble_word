@@ -5,31 +5,37 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_dimensions.dart';
 import '../../core/constants/app_strings.dart';
+import '../../core/constants/game_constants.dart';
 
 class TopStatusBar extends StatelessWidget {
   const TopStatusBar({
     super.key,
-    required this.coins,
-    required this.lives,
-    this.lifeRefillSeconds = 0,
+    required this.hearts,
+    this.maxHearts = GameConstants.maxHearts,
+    this.refillSeconds = 0,
+    this.heartColor = AppColors.accentRed,
     this.showBack = false,
   });
 
-  final int coins;
-  final int lives;
-  final int lifeRefillSeconds;
+  final int hearts;
+  final int maxHearts;
+  final int refillSeconds;
+  final Color heartColor;
   final bool showBack;
 
   String _formatRefill(int seconds) {
     if (seconds <= 0) return '';
-    final m = seconds ~/ 60;
+    final h = seconds ~/ 3600;
+    final m = (seconds % 3600) ~/ 60;
     final s = seconds % 60;
-    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
-    final refill = _formatRefill(lifeRefillSeconds);
+    final refill = _formatRefill(refillSeconds);
+    final showCountdown = hearts < maxHearts && refillSeconds > 0;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppDimensions.paddingM,
@@ -45,68 +51,46 @@ class TopStatusBar extends StatelessWidget {
               onPressed: () => context.go('/home'),
             ),
           const Spacer(),
-          _Badge(
-            icon: Icons.monetization_on,
-            value: '$coins',
-            color: AppColors.neonGold,
-            borderColor: AppColors.neonGold,
+          Row(
+            children: List.generate(maxHearts, (i) {
+              final filled = i < hearts;
+              return Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: Icon(
+                  filled ? Icons.favorite : Icons.favorite_border,
+                  color: filled ? heartColor : Colors.white38,
+                  size: 22,
+                ),
+              );
+            }),
           ),
-          const SizedBox(width: AppDimensions.paddingS),
-          _Badge(
-            icon: Icons.favorite,
-            value: lives > 0 ? '$lives' : refill,
-            color: AppColors.accentRed,
-            borderColor: AppColors.accentRed,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge({
-    required this.icon,
-    required this.value,
-    required this.color,
-    required this.borderColor,
-  });
-
-  final IconData icon;
-  final String value;
-  final Color color;
-  final Color borderColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 6,
-      ),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1040).withValues(alpha: 0.75),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor.withValues(alpha: 0.7), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: borderColor.withValues(alpha: 0.25),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 6),
-          Text(
-            value,
-            style: GoogleFonts.nunito(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: 13,
+          if (showCountdown) ...[
+            const SizedBox(width: AppDimensions.paddingS),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1040).withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: heartColor.withValues(alpha: 0.7),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.timer, color: heartColor, size: 14),
+                  const SizedBox(width: 4),
+                  Text(
+                    refill,
+                    style: GoogleFonts.nunito(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );

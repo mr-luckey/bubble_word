@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/utils/ball_physics_engine.dart';
 import '../../../core/utils/board_layout.dart';
 import '../../../core/constants/app_dimensions.dart';
+import '../../../core/constants/game_constants.dart';
 import '../../../domain/entities/ball.dart';
 import '../../../domain/entities/enums.dart';
 import '../../../domain/entities/game_state.dart';
@@ -37,6 +38,7 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
         super(const GameInitial()) {
     on<StartLevel>(_onStartLevel);
     on<RelayoutBoard>(_onRelayoutBoard);
+    on<TickLevelTimer>(_onTickLevelTimer);
     on<TickPhysics>(_onTickPhysics);
     on<DragBallStart>(_onDragStart);
     on<DragBallUpdate>(_onDragUpdate);
@@ -118,6 +120,29 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
     );
   }
 
+  void _onTickLevelTimer(TickLevelTimer event, Emitter<GameBlocState> emit) {
+    final current = state;
+    if (current is! GamePlaying) return;
+    if (current.gameState.phase == GamePhase.won ||
+        current.gameState.phase == GamePhase.failed) {
+      return;
+    }
+
+    final timeLeft = current.gameState.timeLeftSeconds - 1;
+    if (timeLeft <= 0) {
+      emit(GameFailed(
+        current.gameState.copyWith(timeLeftSeconds: 0, phase: GamePhase.failed),
+        FailReason.timeOut,
+        stars: 0,
+      ));
+      return;
+    }
+
+    emit(GamePlaying(
+      current.gameState.copyWith(timeLeftSeconds: timeLeft),
+    ));
+  }
+
   void _onTickPhysics(TickPhysics event, Emitter<GameBlocState> emit) {
     final current = state;
     if (current is! GamePlaying) return;
@@ -135,10 +160,9 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
     );
     if (_checkBoardOverload(updated, maxBalls: 18)) {
       emit(GameFailed(
-        updated,
+        updated.copyWith(phase: GamePhase.failed),
         FailReason.boardOverload,
         stars: 0,
-        coinsEarned: 0,
       ));
       return;
     }
@@ -224,10 +248,6 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
     if (current is! GamePlaying) return;
 
     final gs = current.gameState;
-    if (gs.movesLeft <= 0) {
-      emit(GameFailed(gs, FailReason.movesExhausted, stars: 0, coinsEarned: 0));
-      return;
-    }
 
     final source = _findBall(gs, event.sourceId);
     final target = _findBall(gs, event.targetId);
@@ -258,7 +278,6 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
       return;
     }
 
-    var movesLeft = gs.movesLeft - result.movesToDeduct;
     var boardBalls = gs.boardBalls
         .where((b) => !result.removedBallIds.contains(b.id))
         .map((b) {
@@ -285,7 +304,6 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
         _emitWin(
           emit,
           gs,
-          movesLeft: movesLeft,
           boardBalls: boardBalls,
           trayBalls: trayBalls,
           completedWordIds: completedIds,
@@ -297,24 +315,16 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
       boardBalls = _separateBoard(boardBalls);
     }
 
-    var newState = gs.copyWith(
+    emit(GamePlaying(gs.copyWith(
       phase: phase,
       boardBalls: boardBalls,
       trayBalls: trayBalls,
       completedWordIds: completedIds,
-      movesLeft: movesLeft,
       mergeFeedback: MergeFeedback.correct,
       snapBallId: result.resultBall.id,
       clearDragging: true,
       clearLastWrong: true,
-    );
-
-    if (movesLeft <= 0 && phase == GamePhase.buildingWords) {
-      emit(GameFailed(newState, FailReason.movesExhausted, stars: 0, coinsEarned: 0));
-      return;
-    }
-
-    emit(GamePlaying(newState));
+    )));
   }
 
   void _onSpawnNext(SpawnNextBall event, Emitter<GameBlocState> emit) {
@@ -410,7 +420,6 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
     var boardBalls = gs.boardBalls.where((b) => b.wordId != word.id).toList();
     var trayBalls = List<Ball>.from(gs.trayBalls);
     var completedIds = List<String>.from(gs.completedWordIds);
-    final movesLeft = gs.movesLeft - word.fragments.length;
 
     if (combined.type == BallType.completeWord) {
       completedIds.add(word.id);
@@ -423,7 +432,6 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
       _emitWin(
         emit,
         gs,
-        movesLeft: movesLeft,
         boardBalls: boardBalls,
         trayBalls: trayBalls,
         completedWordIds: completedIds,
@@ -437,7 +445,6 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
       boardBalls: boardBalls,
       trayBalls: trayBalls,
       completedWordIds: completedIds,
-      movesLeft: movesLeft,
     );
     emit(GamePlaying(gs));
   }
@@ -451,7 +458,8 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
     }
     emit(GamePlaying(
       current.gameState.copyWith(
-        movesLeft: current.gameState.movesLeft + 5,
+        timeLeftSeconds: current.gameState.timeLeftSeconds +
+            GameConstants.secondsPerWord,
       ),
     ));
   }
@@ -492,7 +500,10 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
     final current = state;
     if (current is! GamePlaying) return;
     emit(GamePlaying(
-      current.gameState.copyWith(movesLeft: current.gameState.movesLeft + 5),
+      current.gameState.copyWith(
+        timeLeftSeconds: current.gameState.timeLeftSeconds +
+            GameConstants.secondsPerWord,
+      ),
     ));
   }
 
@@ -520,26 +531,22 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
   void _emitWin(
     Emitter<GameBlocState> emit,
     GameState gs, {
-    required int movesLeft,
     required List<Ball> boardBalls,
     required List<Ball> trayBalls,
     required List<String> completedWordIds,
   }) {
     final stars = _calculateStarRating(
-      movesLeft: movesLeft,
-      movesTotal: gs.movesTotal,
+      timeLeftSeconds: gs.timeLeftSeconds,
+      timeTotalSeconds: gs.timeTotalSeconds,
     );
-    final coins = _calculateStarRating.coinRewardForStars(stars);
     emit(GameWon(
       gs.copyWith(
         phase: GamePhase.won,
         boardBalls: boardBalls,
         trayBalls: trayBalls,
         completedWordIds: completedWordIds,
-        movesLeft: movesLeft,
       ),
       stars: stars,
-      coinsEarned: coins,
     ));
   }
 

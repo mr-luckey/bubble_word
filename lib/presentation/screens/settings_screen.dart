@@ -19,9 +19,8 @@ class SettingsScreen extends StatelessWidget {
         return AppScreenShell(
           bottomNavIndex: 2,
           showTopBar: true,
-          coins: econState.economy.coins,
-          lives: econState.economy.lives,
-          lifeRefillSeconds: econState.economy.lifeRefillSeconds,
+          hearts: econState.economy.lives,
+          refillSeconds: econState.economy.lifeRefillSeconds,
           body: BlocBuilder<SettingsBloc, SettingsBlocState>(
             builder: (context, state) {
               return ListView(

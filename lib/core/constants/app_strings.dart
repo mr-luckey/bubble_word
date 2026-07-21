@@ -11,6 +11,7 @@ abstract final class AppStrings {
   static const String levelComplete = 'Level Complete!';
   static const String levelFailed = 'Level Failed';
   static const String outOfLives = 'Out of Lives';
+  static const String outOfGoldenHearts = 'Out of Golden Hearts';
   static const String stuck = 'STUCK!';
   static const String moves = 'Moves';
   static const String coins = 'Coins';

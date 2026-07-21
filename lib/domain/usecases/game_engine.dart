@@ -2,6 +2,7 @@ import '../entities/ball.dart';
 import '../entities/enums.dart';
 import '../entities/game_state.dart';
 import '../entities/level.dart';
+import '../../core/constants/game_constants.dart';
 import '../../core/utils/board_layout.dart';
 import '../../core/utils/decoy_ball_generator.dart';
 import 'package:uuid/uuid.dart';
@@ -38,14 +39,16 @@ class InitializeGameState {
       height: boardHeight,
     );
 
+    final totalTime = level.wordCount * GameConstants.secondsPerWord;
+
     return GameState(
       level: level,
       phase: GamePhase.buildingWords,
       boardBalls: boardBalls,
       trayBalls: [],
       queue: const [],
-      movesLeft: level.moveBudget,
-      movesTotal: level.moveBudget,
+      timeLeftSeconds: totalTime,
+      timeTotalSeconds: totalTime,
       completedWordIds: [],
       lastWrongMergeBallId: null,
     );

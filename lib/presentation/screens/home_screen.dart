@@ -18,7 +18,6 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<EconomyBloc, EconomyBlocState>(
       buildWhen: (prev, curr) =>
-          prev.economy.coins != curr.economy.coins ||
           prev.economy.lives != curr.economy.lives ||
           prev.economy.lifeRefillSeconds != curr.economy.lifeRefillSeconds,
       builder: (context, state) {
@@ -27,9 +26,8 @@ class HomeScreen extends StatelessWidget {
         return AppScreenShell(
           bottomNavIndex: 0,
           showTopBar: true,
-          coins: economy.coins,
-          lives: economy.lives,
-          lifeRefillSeconds: economy.lifeRefillSeconds,
+          hearts: economy.lives,
+          refillSeconds: economy.lifeRefillSeconds,
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -182,7 +180,6 @@ class _PlayButtonState extends State<_PlayButton>
       return;
     }
     final playLevel = widget.level.clamp(1, 1000);
-    context.read<EconomyBloc>().add(const SpendLife());
     context.go('/game/$playLevel');
   }
 

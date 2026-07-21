@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/constants/game_constants.dart';
 import '../../domain/entities/economy_state.dart';
 
 /// Persists player progress in Hive (economy + level progress).
@@ -37,10 +38,12 @@ class PlayerProgressDataSource {
 
     await box.putAll({
       _migratedKey: true,
-      'coins': _prefs.getInt('coins') ?? 100,
-      'lives': _prefs.getInt('lives') ?? 5,
+      'lives': (_prefs.getInt('lives') ?? 5).clamp(0, GameConstants.maxHearts),
       'life_refill_seconds': _prefs.getInt('life_refill_seconds') ?? 0,
-      'golden_hearts': _prefs.getInt('golden_hearts') ?? 3,
+      'golden_hearts': (_prefs.getInt('golden_hearts') ?? 3)
+          .clamp(0, GameConstants.maxGoldenHearts),
+      'golden_heart_refill_seconds':
+          _prefs.getInt('golden_heart_refill_seconds') ?? 0,
       'daily_streak': _prefs.getInt('daily_streak') ?? 0,
       'levels_completed_ad': _prefs.getInt('levels_completed_ad') ?? 0,
       'no_ads': _prefs.getBool('no_ads') ?? false,
@@ -85,11 +88,20 @@ class PlayerProgressDataSource {
       );
     }
 
+    final lives = (box.get('lives', defaultValue: GameConstants.maxHearts) as int)
+        .clamp(0, GameConstants.maxHearts);
+
+    final goldenHearts =
+        (box.get('golden_hearts', defaultValue: GameConstants.maxGoldenHearts)
+                as int)
+            .clamp(0, GameConstants.maxGoldenHearts);
+
     return EconomyState(
-      coins: box.get('coins', defaultValue: 100) as int,
-      lives: box.get('lives', defaultValue: 5) as int,
+      lives: lives,
       lifeRefillSeconds: box.get('life_refill_seconds', defaultValue: 0) as int,
-      goldenHearts: box.get('golden_hearts', defaultValue: 3) as int,
+      goldenHearts: goldenHearts,
+      goldenHeartRefillSeconds:
+          box.get('golden_heart_refill_seconds', defaultValue: 0) as int,
       dailyStreak: box.get('daily_streak', defaultValue: 0) as int,
       levelsCompletedSinceAd:
           box.get('levels_completed_ad', defaultValue: 0) as int,
@@ -106,10 +118,10 @@ class PlayerProgressDataSource {
 
     final starsMap = state.levelStars.map((k, v) => MapEntry('$k', v));
     await box.putAll({
-      'coins': state.coins,
       'lives': state.lives,
       'life_refill_seconds': state.lifeRefillSeconds,
       'golden_hearts': state.goldenHearts,
+      'golden_heart_refill_seconds': state.goldenHeartRefillSeconds,
       'daily_streak': state.dailyStreak,
       'levels_completed_ad': state.levelsCompletedSinceAd,
       'no_ads': state.noAdsPurchased,

@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_dimensions.dart';
 import '../../core/constants/app_strings.dart';
+import '../../core/constants/game_constants.dart';
 import '../../core/theme/app_decorations.dart';
 import '../bloc/economy/economy_bloc.dart';
 import '../widgets/app_screen_shell.dart';
@@ -18,19 +19,36 @@ class DailyChallengeScreen extends StatelessWidget {
     return (now.difference(DateTime(now.year)).inDays % 1000) + 1;
   }
 
+  String _formatRefill(int seconds) {
+    if (seconds <= 0) return '';
+    final h = seconds ~/ 3600;
+    final m = (seconds % 3600) ~/ 60;
+    final s = seconds % 60;
+    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<EconomyBloc, EconomyBlocState>(
+      buildWhen: (prev, curr) =>
+          prev.economy.goldenHearts != curr.economy.goldenHearts ||
+          prev.economy.goldenHeartRefillSeconds !=
+              curr.economy.goldenHeartRefillSeconds ||
+          prev.economy.dailyStreak != curr.economy.dailyStreak,
       builder: (context, state) {
         final economy = state.economy;
         final levelId = _dailyLevelId();
+        final refill = _formatRefill(economy.goldenHeartRefillSeconds);
+        final showRefill = economy.goldenHearts < GameConstants.maxGoldenHearts &&
+            economy.goldenHeartRefillSeconds > 0;
 
         return AppScreenShell(
           bottomNavIndex: 1,
           showTopBar: true,
-          coins: economy.coins,
-          lives: economy.lives,
-          lifeRefillSeconds: economy.lifeRefillSeconds,
+          hearts: economy.goldenHearts,
+          maxHearts: GameConstants.maxGoldenHearts,
+          refillSeconds: economy.goldenHeartRefillSeconds,
+          heartColor: AppColors.neonGold,
           body: Padding(
             padding: const EdgeInsets.all(AppDimensions.paddingL),
             child: Column(
@@ -93,35 +111,54 @@ class DailyChallengeScreen extends StatelessWidget {
                           fontSize: 16,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.favorite, color: AppColors.neonGold),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Golden Hearts: ${economy.goldenHearts}',
-                            style: GoogleFonts.nunito(
-                              color: Colors.white70,
-                              fontWeight: FontWeight.w600,
+                        children: List.generate(GameConstants.maxGoldenHearts, (i) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Icon(
+                              i < economy.goldenHearts
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: i < economy.goldenHearts
+                                  ? AppColors.neonGold
+                                  : Colors.white38,
+                              size: 28,
                             ),
-                          ),
-                        ],
+                          );
+                        }),
                       ),
+                      if (showRefill) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Next heart in $refill',
+                          style: GoogleFonts.nunito(
+                            color: AppColors.neonGold,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
                 const SizedBox(height: AppDimensions.paddingL),
                 GestureDetector(
                   onTap: () {
-                    if (economy.lives <= 0) {
+                    if (economy.goldenHearts <= 0) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text(AppStrings.outOfLives)),
+                        SnackBar(
+                          content: Text(
+                            showRefill
+                                ? '${AppStrings.outOfGoldenHearts} — $refill'
+                                : AppStrings.outOfGoldenHearts,
+                          ),
+                        ),
                       );
                       return;
                     }
-                    context.read<EconomyBloc>().add(const SpendLife());
-                    context.go('/game/$levelId');
+                    context.go('/game/$levelId?daily=true');
                   },
                   child: Container(
                     width: double.infinity,

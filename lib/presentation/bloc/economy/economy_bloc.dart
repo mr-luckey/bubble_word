@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/constants/game_constants.dart';
 import '../../../data/datasources/player_progress_datasource.dart';
 import '../../../domain/entities/economy_state.dart';
 
@@ -13,10 +14,9 @@ class EconomyBloc extends Bloc<EconomyEvent, EconomyBlocState> {
   EconomyBloc(this._dataSource)
       : super(EconomyBlocState(_dataSource.loadEconomy())) {
     on<LoadEconomy>(_onLoad);
-    on<EarnCoins>(_onEarnCoins);
-    on<SpendCoins>(_onSpendCoins);
     on<AddLife>(_onAddLife);
     on<SpendLife>(_onSpendLife);
+    on<SpendGoldenHeart>(_onSpendGoldenHeart);
     on<SetCurrentLevel>(_onSetLevel);
     on<RecordLevelStars>(_onRecordStars);
     on<CompleteLevel>(_onCompleteLevel);
@@ -43,30 +43,39 @@ class EconomyBloc extends Bloc<EconomyEvent, EconomyBlocState> {
     emit(EconomyBlocState(s));
   }
 
-  Future<void> _onEarnCoins(EarnCoins event, Emitter<EconomyBlocState> emit) async {
-    final s = state.economy.copyWith(coins: state.economy.coins + event.amount);
-    await _persist(emit, s);
-  }
-
-  Future<void> _onSpendCoins(SpendCoins event, Emitter<EconomyBlocState> emit) async {
-    if (state.economy.coins < event.amount) return;
-    final s = state.economy.copyWith(coins: state.economy.coins - event.amount);
-    await _persist(emit, s);
-  }
-
   Future<void> _onAddLife(AddLife event, Emitter<EconomyBlocState> emit) async {
     final lives =
         (state.economy.lives + event.count).clamp(0, state.economy.maxLives);
-    final s = state.economy.copyWith(lives: lives);
+    final s = state.economy.copyWith(
+      lives: lives,
+      lifeRefillSeconds: lives >= state.economy.maxLives ? 0 : state.economy.lifeRefillSeconds,
+    );
     await _persist(emit, s);
   }
 
   Future<void> _onSpendLife(SpendLife event, Emitter<EconomyBlocState> emit) async {
     if (state.economy.lives <= 0) return;
+    final newLives = state.economy.lives - 1;
     final s = state.economy.copyWith(
-      lives: state.economy.lives - 1,
-      lifeRefillSeconds:
-          state.economy.lives - 1 < state.economy.maxLives ? 1800 : 0,
+      lives: newLives,
+      lifeRefillSeconds: newLives < state.economy.maxLives
+          ? GameConstants.heartRefillSeconds
+          : 0,
+    );
+    await _persist(emit, s);
+  }
+
+  Future<void> _onSpendGoldenHeart(
+    SpendGoldenHeart event,
+    Emitter<EconomyBlocState> emit,
+  ) async {
+    if (state.economy.goldenHearts <= 0) return;
+    final newGolden = state.economy.goldenHearts - 1;
+    final s = state.economy.copyWith(
+      goldenHearts: newGolden,
+      goldenHeartRefillSeconds: newGolden < state.economy.maxGoldenHearts
+          ? GameConstants.heartRefillSeconds
+          : 0,
     );
     await _persist(emit, s);
   }
@@ -96,7 +105,6 @@ class EconomyBloc extends Bloc<EconomyEvent, EconomyBlocState> {
     await _persist(emit, s);
   }
 
-  /// Atomically saves win progress: coins, stars, next level, ad counter.
   Future<void> _onCompleteLevel(
     CompleteLevel event,
     Emitter<EconomyBlocState> emit,
@@ -109,7 +117,6 @@ class EconomyBloc extends Bloc<EconomyEvent, EconomyBlocState> {
     final nextLevel = event.levelId + 1;
     final cappedNext = nextLevel > 1001 ? 1001 : nextLevel;
     final s = state.economy.copyWith(
-      coins: state.economy.coins + event.coinsEarned,
       levelStars: stars,
       currentLevel: cappedNext > state.economy.currentLevel
           ? cappedNext
@@ -149,16 +156,56 @@ class EconomyBloc extends Bloc<EconomyEvent, EconomyBlocState> {
     TickLifeRefill event,
     Emitter<EconomyBlocState> emit,
   ) async {
-    if (state.economy.lives >= state.economy.maxLives) return;
-    var secs = state.economy.lifeRefillSeconds;
-    if (secs <= 0) {
-      final s = state.economy.copyWith(lives: state.economy.lives + 1, lifeRefillSeconds: 1800);
-      await _persist(emit, s);
-      return;
+    var economy = state.economy;
+    var changed = false;
+
+    if (economy.lives >= economy.maxLives) {
+      if (economy.lifeRefillSeconds != 0) {
+        economy = economy.copyWith(lifeRefillSeconds: 0);
+        changed = true;
+      }
+    } else {
+      var secs = economy.lifeRefillSeconds;
+      if (secs <= 0) {
+        final newLives = economy.lives + 1;
+        economy = economy.copyWith(
+          lives: newLives,
+          lifeRefillSeconds: newLives < economy.maxLives
+              ? GameConstants.heartRefillSeconds
+              : 0,
+        );
+        changed = true;
+      } else {
+        economy = economy.copyWith(lifeRefillSeconds: secs - 1);
+        changed = true;
+      }
     }
-    secs--;
-    final s = state.economy.copyWith(lifeRefillSeconds: secs);
-    await _persist(emit, s);
+
+    if (economy.goldenHearts >= economy.maxGoldenHearts) {
+      if (economy.goldenHeartRefillSeconds != 0) {
+        economy = economy.copyWith(goldenHeartRefillSeconds: 0);
+        changed = true;
+      }
+    } else {
+      var secs = economy.goldenHeartRefillSeconds;
+      if (secs <= 0) {
+        final newGolden = economy.goldenHearts + 1;
+        economy = economy.copyWith(
+          goldenHearts: newGolden,
+          goldenHeartRefillSeconds: newGolden < economy.maxGoldenHearts
+              ? GameConstants.heartRefillSeconds
+              : 0,
+        );
+        changed = true;
+      } else {
+        economy = economy.copyWith(goldenHeartRefillSeconds: secs - 1);
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      await _persist(emit, economy);
+    }
   }
 
   Future<void> _onUpdateBoosters(
