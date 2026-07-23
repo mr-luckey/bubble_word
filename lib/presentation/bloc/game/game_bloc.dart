@@ -295,15 +295,13 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
         }
         return b.copyWith(isDragging: false);
       }).toList();
-      emit(
-        GamePlaying(
-          gs.copyWith(
-            boardBalls: balls,
-            mergeFeedback: MergeFeedback.wrong,
-            clearDragging: true,
-          ),
-        ),
+      var next = gs.copyWith(
+        boardBalls: balls,
+        mergeFeedback: MergeFeedback.wrong,
+        clearDragging: true,
       );
+      next = _maybeLevel1Guide(_clearHints(next));
+      emit(GamePlaying(next));
       return;
     }
 
@@ -340,39 +338,37 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
         return;
       }
       boardBalls = _separateBoard(boardBalls);
-      emit(
-        GamePlaying(
-          gs.copyWith(
-            phase: phase,
-            boardBalls: boardBalls,
-            trayBalls: trayBalls,
-            completedWordIds: completedIds,
-            mergeFeedback: MergeFeedback.wordComplete,
-            snapBallId: result.resultBall.id,
-            clearDragging: true,
-            clearLastWrong: true,
-          ),
-        ),
+      var next = gs.copyWith(
+        phase: phase,
+        boardBalls: boardBalls,
+        trayBalls: trayBalls,
+        completedWordIds: completedIds,
+        mergeFeedback: MergeFeedback.wordComplete,
+        snapBallId: result.resultBall.id,
+        clearDragging: true,
+        clearLastWrong: true,
+        hintBallIds: const [],
       );
+      next = _maybeLevel1Guide(next);
+      emit(GamePlaying(next));
       return;
     } else if (result.isCorrect && gs.phase == GamePhase.buildingWords) {
       boardBalls = _separateBoard(boardBalls);
     }
 
-    emit(
-      GamePlaying(
-        gs.copyWith(
-          phase: phase,
-          boardBalls: boardBalls,
-          trayBalls: trayBalls,
-          completedWordIds: completedIds,
-          mergeFeedback: MergeFeedback.correct,
-          snapBallId: result.resultBall.id,
-          clearDragging: true,
-          clearLastWrong: true,
-        ),
-      ),
+    var next = gs.copyWith(
+      phase: phase,
+      boardBalls: boardBalls,
+      trayBalls: trayBalls,
+      completedWordIds: completedIds,
+      mergeFeedback: MergeFeedback.correct,
+      snapBallId: result.resultBall.id,
+      clearDragging: true,
+      clearLastWrong: true,
+      hintBallIds: const [],
     );
+    next = _maybeLevel1Guide(next);
+    emit(GamePlaying(next));
   }
 
   void _onSpawnNext(SpawnNextBall event, Emitter<GameBlocState> emit) {
@@ -399,8 +395,13 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
   void _onApplyHint(ApplyHint event, Emitter<GameBlocState> emit) {
     final current = state;
     if (current is! GamePlaying) return;
-    final gs = current.gameState;
-    if (gs.phase != GamePhase.buildingWords) return;
+    final next = _withHintPair(current.gameState);
+    if (next != null) emit(GamePlaying(next));
+  }
+
+  /// Finds first valid merge pair. [hintBallIds] = [sourceId, targetId] (drag dir).
+  GameState? _withHintPair(GameState gs) {
+    if (gs.phase != GamePhase.buildingWords) return null;
 
     final fragments = gs.boardBalls
         .where(
@@ -427,16 +428,38 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
           level: gs.level,
           phase: gs.phase,
         );
-        if ((mergeA?.isCorrect ?? false) || (mergeB?.isCorrect ?? false)) {
-          final ids = [a.id, b.id];
-          final balls = gs.boardBalls.map((ball) {
-            return ball.copyWith(isHighlighted: ids.contains(ball.id));
-          }).toList();
-          emit(GamePlaying(gs.copyWith(boardBalls: balls, hintBallIds: ids)));
-          return;
+        final List<String> ids;
+        if (mergeA?.isCorrect ?? false) {
+          ids = [a.id, b.id];
+        } else if (mergeB?.isCorrect ?? false) {
+          ids = [b.id, a.id];
+        } else {
+          continue;
         }
+        final balls = gs.boardBalls.map((ball) {
+          return ball.copyWith(isHighlighted: ids.contains(ball.id));
+        }).toList();
+        return gs.copyWith(boardBalls: balls, hintBallIds: ids);
       }
     }
+    // No pair — clear old highlights.
+    final cleared = gs.boardBalls
+        .map((b) => b.copyWith(isHighlighted: false))
+        .toList();
+    return gs.copyWith(boardBalls: cleared, hintBallIds: const []);
+  }
+
+  GameState _clearHints(GameState gs) {
+    final balls =
+        gs.boardBalls.map((b) => b.copyWith(isHighlighted: false)).toList();
+    return gs.copyWith(boardBalls: balls, hintBallIds: const []);
+  }
+
+  /// Level-1 FTUE: keep a guide pair highlighted after board changes.
+  GameState _maybeLevel1Guide(GameState gs) {
+    if (gs.level.id != 1) return gs;
+    if (gs.phase != GamePhase.buildingWords) return gs;
+    return _withHintPair(gs) ?? gs;
   }
 
   void _onApplyMagnet(ApplyMagnet event, Emitter<GameBlocState> emit) {
@@ -575,7 +598,9 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
     final current = state;
     if (current is! GamePlaying) return;
     if (current.gameState.dropComplete) return;
-    emit(GamePlaying(current.gameState.copyWith(dropComplete: true)));
+    var gs = current.gameState.copyWith(dropComplete: true);
+    gs = _maybeLevel1Guide(gs);
+    emit(GamePlaying(gs));
   }
 
   void _onReset(ResetGame event, Emitter<GameBlocState> emit) {

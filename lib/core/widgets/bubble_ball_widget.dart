@@ -110,11 +110,11 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
     final radius = widget.compact
         ? 18.0
         : widget.radius ??
-            AppDimensions.scaledBallRadius(
-              context,
-              charCount: widget.ball.chars.length,
-              isDecoy: widget.ball.type == BallType.decoy,
-            );
+              AppDimensions.scaledBallRadius(
+                context,
+                charCount: widget.ball.chars.length,
+                isDecoy: widget.ball.type == BallType.decoy,
+              );
     final size =
         AppDimensions.visualBallSize(radius) + (widget.compact ? -12 : 0);
 
@@ -158,7 +158,8 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
     );
 
     final ballFace = RepaintBoundary(
-      child: widget.onPanStart != null ||
+      child:
+          widget.onPanStart != null ||
               widget.onPanUpdate != null ||
               widget.onPanEnd != null
           ? GestureDetector(
@@ -174,9 +175,8 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
       animation: _animListenable,
       child: ballFace,
       builder: (context, child) {
-        final floatY = !widget.compact &&
-                widget.enableIdleFloat &&
-                !widget.ball.isDragging
+        final floatY =
+            !widget.compact && widget.enableIdleFloat && !widget.ball.isDragging
             ? math.sin(_floatController.value * math.pi * 2) * 2
             : 0.0;
         final shakeX = widget.ball.type == BallType.junk
@@ -189,10 +189,7 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
 
         return Transform.translate(
           offset: Offset(shakeX, floatY),
-          child: Transform.scale(
-            scale: snapScale * dragScale,
-            child: child,
-          ),
+          child: Transform.scale(scale: snapScale * dragScale, child: child),
         );
       },
     );
@@ -287,8 +284,11 @@ class _MarbleBallPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1
-        ..color =
-            Color.lerp(shade, Colors.black, 0.15)!.withValues(alpha: 0.28),
+        ..color = Color.lerp(
+          shade,
+          Colors.black,
+          0.15,
+        )!.withValues(alpha: 0.28),
     );
 
     if (ball.isHighlighted) {
@@ -336,7 +336,7 @@ class _MarbleBallPainter extends CustomPainter {
         Paint()
           ..color = AppColors.neonGold
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 3
+          ..strokeWidth = 5
           ..strokeCap = StrokeCap.round,
       );
     }

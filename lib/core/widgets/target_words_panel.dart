@@ -85,10 +85,7 @@ class TargetWordsPanel extends StatelessWidget {
 }
 
 class _WordChip extends StatelessWidget {
-  const _WordChip({
-    required this.text,
-    required this.isComplete,
-  });
+  const _WordChip({required this.text, required this.isComplete});
 
   final String text;
   final bool isComplete;
@@ -110,10 +107,7 @@ class _WordChip extends StatelessWidget {
                   AppColors.accentGreen.withValues(alpha: 0.9),
                   AppColors.accentGreen.withValues(alpha: 0.65),
                 ]
-              : [
-                  Color.lerp(colors.first, Colors.white, 0.2)!,
-                  colors.last,
-                ],
+              : [Color.lerp(colors.first, Colors.white, 0.2)!, colors.last],
         ),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
@@ -137,7 +131,7 @@ class _WordChip extends StatelessWidget {
           letterSpacing: 0.6,
           decoration: isComplete ? TextDecoration.lineThrough : null,
           decorationColor: Colors.white,
-          decorationThickness: 2,
+          decorationThickness: 5.5,
         ),
       ),
     );

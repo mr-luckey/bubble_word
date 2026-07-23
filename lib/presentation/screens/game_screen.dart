@@ -16,6 +16,7 @@ import '../../core/utils/board_layout.dart';
 import '../../core/widgets/banner_ad_widget.dart';
 import '../../core/widgets/bubble_ball_widget.dart';
 import '../../core/widgets/glow_platform.dart';
+import '../../core/widgets/guide_hand_overlay.dart';
 import '../../core/widgets/hint_connector_painter.dart';
 import '../../core/widgets/game_header_bar.dart';
 import '../../core/widgets/nebula_background.dart';
@@ -604,8 +605,6 @@ class _GameScreenState extends State<GameScreen>
         BlocBuilder<EconomyBloc, EconomyBlocState>(
           builder: (context, econState) => GameHeaderBar(
             levelId: levelState.level.id,
-            wordsComplete: 0,
-            wordsTotal: levelState.level.wordCount,
             timeLeftSeconds:
                 levelState.level.wordCount * GameConstants.secondsPerWord,
             onBack: () => context.go('/home'),
@@ -648,7 +647,6 @@ class _GameScreenState extends State<GameScreen>
             final a = prev.gameState;
             final b = curr.gameState;
             return a.timeLeftSeconds != b.timeLeftSeconds ||
-                a.completedWordIds != b.completedWordIds ||
                 a.level.id != b.level.id;
           },
           builder: (context, gameState) {
@@ -656,8 +654,6 @@ class _GameScreenState extends State<GameScreen>
             return BlocBuilder<EconomyBloc, EconomyBlocState>(
               builder: (context, econState) => GameHeaderBar(
                 levelId: gs.level.id,
-                wordsComplete: gs.completedWordIds.length,
-                wordsTotal: gs.level.wordCount,
                 timeLeftSeconds: gs.timeLeftSeconds,
                 onBack: () => context.go('/home'),
                 hintCount: econState.economy.boosters.hint,
@@ -736,32 +732,57 @@ class _GameScreenState extends State<GameScreen>
                           return 0;
                         });
 
-                  Stack buildPlayfield() => Stack(
-                        key: _playfieldKey,
-                        clipBehavior: Clip.none,
-                        children: [
-                          const Positioned(
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            height: 36,
-                            child: GlowPlatform(),
-                          ),
-                          if (hintA != null && hintB != null)
-                            CustomPaint(
-                              size: Size(_boardWidth, _boardHeight),
-                              painter: HintConnectorPainter(
-                                ballA: hintA,
-                                ballB: hintB,
-                              ),
+                  Stack buildPlayfield() {
+                    Ball? guideFrom;
+                    Ball? guideTo;
+                    if (widget.levelId == 1 &&
+                        gs.dropComplete &&
+                        gs.hintBallIds.length >= 2) {
+                      guideFrom = gs.boardBalls
+                          .where((b) => b.id == gs.hintBallIds[0])
+                          .firstOrNull;
+                      guideTo = gs.boardBalls
+                          .where((b) => b.id == gs.hintBallIds[1])
+                          .firstOrNull;
+                    }
+
+                    return Stack(
+                      key: _playfieldKey,
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          height: 36,
+                          child: GlowPlatform(),
+                        ),
+                        if (hintA != null && hintB != null)
+                          CustomPaint(
+                            size: Size(_boardWidth, _boardHeight),
+                            painter: HintConnectorPainter(
+                              ballA: hintA,
+                              ballB: hintB,
                             ),
-                          ..._buildBoardBallWidgets(
-                            onBoard,
-                            gs.snapBallId,
-                            dropComplete: gs.dropComplete,
                           ),
-                        ],
-                      );
+                        ..._buildBoardBallWidgets(
+                          onBoard,
+                          gs.snapBallId,
+                          dropComplete: gs.dropComplete,
+                        ),
+                        if (guideFrom != null &&
+                            guideTo != null &&
+                            !gs.boardBalls.any((b) => b.isDragging))
+                          GuideHandOverlay(
+                            key: ValueKey(
+                              '${guideFrom.id}_${guideTo.id}',
+                            ),
+                            from: Offset(guideFrom.x, guideFrom.y),
+                            to: Offset(guideTo.x, guideTo.y),
+                          ),
+                      ],
+                    );
+                  }
 
                   // Drop frames: AnimationController only (no setState).
                   final stack = gs.dropComplete
