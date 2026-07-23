@@ -107,6 +107,10 @@ class ClearMergeFeedback extends GameEvent {
   const ClearMergeFeedback();
 }
 
+class CompleteDropAnimation extends GameEvent {
+  const CompleteDropAnimation();
+}
+
 class ResetGame extends GameEvent {
   const ResetGame();
 }

@@ -51,6 +51,7 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
     on<ApplyMagicWand>(_onApplyMagicWand);
     on<AddExtraMoves>(_onAddExtraMoves);
     on<ClearMergeFeedback>(_onClearMergeFeedback);
+    on<CompleteDropAnimation>(_onCompleteDropAnimation);
     on<ResetGame>(_onReset);
   }
 
@@ -112,7 +113,10 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
       return b.copyWith(x: updated.x, y: updated.y);
     }).toList();
 
-    emit(GamePlaying(current.gameState.copyWith(boardBalls: boardBalls)));
+    emit(GamePlaying(current.gameState.copyWith(
+      boardBalls: boardBalls,
+      dropComplete: false,
+    )));
   }
 
   List<Ball> _separateBoard(List<Ball> balls) {
@@ -192,6 +196,8 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
       if (b.id == event.ballId) {
         return b.copyWith(isDragging: true, vx: 0, vy: 0);
       }
+      // Ensure only one ball is dragging (stale flags break multi-ball move).
+      if (b.isDragging) return b.copyWith(isDragging: false);
       return b;
     }).toList();
     emit(
@@ -241,8 +247,16 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
     if (target != null) {
       add(MergeBallsAttempt(sourceId: source.id, targetId: target.id));
     } else {
+      // Wrong / empty drop — snap ball back to where the drag started.
       final balls = current.gameState.boardBalls.map((b) {
-        if (b.id == _draggingId) return b.copyWith(isDragging: false);
+        if (b.id == _draggingId) {
+          return b.copyWith(
+            isDragging: false,
+            x: _dragOriginX,
+            y: _dragOriginY,
+          );
+        }
+        if (b.isDragging) return b.copyWith(isDragging: false);
         return b;
       }).toList();
       emit(
@@ -552,6 +566,16 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
         ),
       ),
     );
+  }
+
+  void _onCompleteDropAnimation(
+    CompleteDropAnimation event,
+    Emitter<GameBlocState> emit,
+  ) {
+    final current = state;
+    if (current is! GamePlaying) return;
+    if (current.gameState.dropComplete) return;
+    emit(GamePlaying(current.gameState.copyWith(dropComplete: true)));
   }
 
   void _onReset(ResetGame event, Emitter<GameBlocState> emit) {

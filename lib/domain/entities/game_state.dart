@@ -19,6 +19,7 @@ class GameState extends Equatable {
     this.showMergePrompt = false,
     this.mergeFeedback = MergeFeedback.none,
     this.snapBallId,
+    this.dropComplete = false,
   });
 
   final Level level;
@@ -35,6 +36,8 @@ class GameState extends Equatable {
   final bool showMergePrompt;
   final MergeFeedback mergeFeedback;
   final String? snapBallId;
+  /// True after intro drop finishes — owned by GameBloc (no setState).
+  final bool dropComplete;
 
   bool get allWordsComplete =>
       completedWordIds.length >= level.wordCount;
@@ -56,6 +59,7 @@ class GameState extends Equatable {
     bool? showMergePrompt,
     MergeFeedback? mergeFeedback,
     String? snapBallId,
+    bool? dropComplete,
     bool clearLastWrong = false,
     bool clearDragging = false,
     bool clearSnap = false,
@@ -78,6 +82,7 @@ class GameState extends Equatable {
       showMergePrompt: showMergePrompt ?? this.showMergePrompt,
       mergeFeedback: mergeFeedback ?? this.mergeFeedback,
       snapBallId: clearSnap ? null : (snapBallId ?? this.snapBallId),
+      dropComplete: dropComplete ?? this.dropComplete,
     );
   }
 
@@ -97,5 +102,6 @@ class GameState extends Equatable {
         showMergePrompt,
         mergeFeedback,
         snapBallId,
+        dropComplete,
       ];
 }

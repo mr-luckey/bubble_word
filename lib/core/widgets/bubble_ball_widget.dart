@@ -119,49 +119,55 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
         AppDimensions.visualBallSize(radius) + (widget.compact ? -12 : 0);
 
     // Built once per ball prop change — NOT every float frame.
-    final ballFace = RepaintBoundary(
-      child: GestureDetector(
-        onPanStart: widget.onPanStart,
-        onPanUpdate: widget.onPanUpdate,
-        onPanEnd: widget.onPanEnd,
-        child: SizedBox(
-          width: size,
-          height: size,
-          child: CustomPaint(
-            painter: _MarbleBallPainter(
-              ball: widget.ball,
-              radius: radius,
-              showProgressRing: widget.showProgressRing,
-              isDragging: widget.ball.isDragging,
-            ),
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: radius * 0.08),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Text(
-                        widget.ball.chars,
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        style: AppTextStyles.ballTextStroke(radius: radius),
-                      ),
-                      Text(
-                        widget.ball.chars,
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        style: AppTextStyles.ballText(radius: radius),
-                      ),
-                    ],
+    final face = SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        painter: _MarbleBallPainter(
+          ball: widget.ball,
+          radius: radius,
+          showProgressRing: widget.showProgressRing,
+          isDragging: widget.ball.isDragging,
+        ),
+        child: Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: radius * 0.08),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Text(
+                    widget.ball.chars,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    style: AppTextStyles.ballTextStroke(radius: radius),
                   ),
-                ),
+                  Text(
+                    widget.ball.chars,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    style: AppTextStyles.ballText(radius: radius),
+                  ),
+                ],
               ),
             ),
           ),
         ),
       ),
+    );
+
+    final ballFace = RepaintBoundary(
+      child: widget.onPanStart != null ||
+              widget.onPanUpdate != null ||
+              widget.onPanEnd != null
+          ? GestureDetector(
+              onPanStart: widget.onPanStart,
+              onPanUpdate: widget.onPanUpdate,
+              onPanEnd: widget.onPanEnd,
+              child: face,
+            )
+          : face,
     );
 
     return AnimatedBuilder(
