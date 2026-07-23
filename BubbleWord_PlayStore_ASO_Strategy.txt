@@ -94,7 +94,7 @@ SECTION 2: APP IDENTITY (FINAL ASO-OPTIMIZED)
 │   • com.appwaretech.wordballs                                               │
 │   • com.appwaretech.merge.word.balls                                        │
 │                                                                             │
-│   ⚠ CURRENT: com.example.bubble_word — MUST change before Play Store upload │
+│   ⚠ CURRENT: com.appwaretech.bubbleword — MUST change before Play Store upload │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────┐

@@ -5,7 +5,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../constants/ad_constants.dart';
 import '../../presentation/bloc/economy/economy_bloc.dart';
 
-/// Bottom banner ad shown on main screens (hidden when ads removed).
+/// Bottom banner — tries [AdConstants.bannerIds] 1-by-1 until one loads.
 class BannerAdWidget extends StatefulWidget {
   const BannerAdWidget({super.key});
 
@@ -16,35 +16,59 @@ class BannerAdWidget extends StatefulWidget {
 class _BannerAdWidgetState extends State<BannerAdWidget> {
   BannerAd? _bannerAd;
   bool _loaded = false;
+  int _loadGen = 0;
 
   @override
   void initState() {
     super.initState();
-    _loadBanner();
+    _loadBannerWaterfall();
   }
 
-  void _loadBanner() {
+  void _loadBannerWaterfall() {
+    final ids = AdConstants.bannerIds;
+    if (ids.isEmpty) return;
+    final gen = ++_loadGen;
+    _tryBannerAt(0, ids, gen);
+  }
+
+  void _tryBannerAt(int index, List<String> ids, int gen) {
+    if (!mounted || gen != _loadGen) return;
+    if (index >= ids.length) {
+      if (mounted) setState(() => _loaded = false);
+      return;
+    }
+
     final banner = BannerAd(
-      adUnitId: AdConstants.bannerTestId,
+      adUnitId: ids[index],
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
-          if (mounted) setState(() => _loaded = true);
+          if (!mounted || gen != _loadGen) {
+            ad.dispose();
+            return;
+          }
+          // First success — stop waterfall (no further IDs).
+          setState(() {
+            _bannerAd = ad as BannerAd;
+            _loaded = true;
+          });
         },
         onAdFailedToLoad: (ad, _) {
           ad.dispose();
-          if (mounted) setState(() => _loaded = false);
+          if (!mounted || gen != _loadGen) return;
+          _tryBannerAt(index + 1, ids, gen);
         },
       ),
     );
     banner.load();
-    _bannerAd = banner;
   }
 
   @override
   void dispose() {
+    _loadGen++;
     _bannerAd?.dispose();
+    _bannerAd = null;
     super.dispose();
   }
 

@@ -28,14 +28,14 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
     required SpawnBallFromQueue spawnBallFromQueue,
     required SplitJunkBall splitJunkBall,
     required BallPhysicsEngine physicsEngine,
-  })  : _initializeGameState = initializeGameState,
-        _validateMerge = validateMerge,
-        _checkBoardOverload = checkBoardOverload,
-        _calculateStarRating = calculateStarRating,
-        _spawnBallFromQueue = spawnBallFromQueue,
-        _splitJunkBall = splitJunkBall,
-        _physicsEngine = physicsEngine,
-        super(const GameInitial()) {
+  }) : _initializeGameState = initializeGameState,
+       _validateMerge = validateMerge,
+       _checkBoardOverload = checkBoardOverload,
+       _calculateStarRating = calculateStarRating,
+       _spawnBallFromQueue = spawnBallFromQueue,
+       _splitJunkBall = splitJunkBall,
+       _physicsEngine = physicsEngine,
+       super(const GameInitial()) {
     on<StartLevel>(_onStartLevel);
     on<RelayoutBoard>(_onRelayoutBoard);
     on<TickLevelTimer>(_onTickLevelTimer);
@@ -70,7 +70,10 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
   double _dragOriginY = 0;
   static const double _mergeSnapPadding = 20;
 
-  Future<void> _onStartLevel(StartLevel event, Emitter<GameBlocState> emit) async {
+  Future<void> _onStartLevel(
+    StartLevel event,
+    Emitter<GameBlocState> emit,
+  ) async {
     _boardWidth = event.boardWidth;
     _boardHeight = event.boardHeight;
     final gameState = _initializeGameState(
@@ -78,8 +81,7 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
       boardWidth: _boardWidth,
       boardHeight: _boardHeight,
     );
-    _layoutBallCount =
-        gameState.boardBalls.where((b) => b.isOnBoard).length;
+    _layoutBallCount = gameState.boardBalls.where((b) => b.isOnBoard).length;
     emit(GamePlaying(gameState));
   }
 
@@ -91,8 +93,9 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
     _boardWidth = event.boardWidth;
     _boardHeight = event.boardHeight;
 
-    final onBoard =
-        current.gameState.boardBalls.where((b) => b.isOnBoard).toList();
+    final onBoard = current.gameState.boardBalls
+        .where((b) => b.isOnBoard)
+        .toList();
     if (onBoard.isEmpty) return;
 
     final laid = BoardLayout.layoutFragments(
@@ -130,17 +133,20 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
 
     final timeLeft = current.gameState.timeLeftSeconds - 1;
     if (timeLeft <= 0) {
-      emit(GameFailed(
-        current.gameState.copyWith(timeLeftSeconds: 0, phase: GamePhase.failed),
-        FailReason.timeOut,
-        stars: 0,
-      ));
+      emit(
+        GameFailed(
+          current.gameState.copyWith(
+            timeLeftSeconds: 0,
+            phase: GamePhase.failed,
+          ),
+          FailReason.timeOut,
+          stars: 0,
+        ),
+      );
       return;
     }
 
-    emit(GamePlaying(
-      current.gameState.copyWith(timeLeftSeconds: timeLeft),
-    ));
+    emit(GamePlaying(current.gameState.copyWith(timeLeftSeconds: timeLeft)));
   }
 
   void _onTickPhysics(TickPhysics event, Emitter<GameBlocState> emit) {
@@ -159,11 +165,13 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
       event.boardHeight,
     );
     if (_checkBoardOverload(updated, maxBalls: 18)) {
-      emit(GameFailed(
-        updated.copyWith(phase: GamePhase.failed),
-        FailReason.boardOverload,
-        stars: 0,
-      ));
+      emit(
+        GameFailed(
+          updated.copyWith(phase: GamePhase.failed),
+          FailReason.boardOverload,
+          stars: 0,
+        ),
+      );
       return;
     }
     emit(GamePlaying(updated));
@@ -186,21 +194,23 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
       }
       return b;
     }).toList();
-    emit(GamePlaying(current.gameState.copyWith(
-      boardBalls: balls,
-      draggingBallId: event.ballId,
-    )));
+    emit(
+      GamePlaying(
+        current.gameState.copyWith(
+          boardBalls: balls,
+          draggingBallId: event.ballId,
+        ),
+      ),
+    );
   }
 
   void _onDragUpdate(DragBallUpdate event, Emitter<GameBlocState> emit) {
     final current = state;
     if (current is! GamePlaying || _draggingId == null) return;
-    final balls = current.gameState.boardBalls.map((b) {
-      if (b.id == _draggingId) {
-        return b.copyWith(x: event.x, y: event.y);
-      }
-      return b;
-    }).toList();
+    final balls = List<Ball>.of(current.gameState.boardBalls);
+    final index = balls.indexWhere((b) => b.id == _draggingId);
+    if (index < 0) return;
+    balls[index] = balls[index].copyWith(x: event.x, y: event.y);
     emit(GamePlaying(current.gameState.copyWith(boardBalls: balls)));
   }
 
@@ -235,10 +245,11 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
         if (b.id == _draggingId) return b.copyWith(isDragging: false);
         return b;
       }).toList();
-      emit(GamePlaying(current.gameState.copyWith(
-        boardBalls: balls,
-        clearDragging: true,
-      )));
+      emit(
+        GamePlaying(
+          current.gameState.copyWith(boardBalls: balls, clearDragging: true),
+        ),
+      );
     }
     _draggingId = null;
   }
@@ -270,11 +281,15 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
         }
         return b.copyWith(isDragging: false);
       }).toList();
-      emit(GamePlaying(gs.copyWith(
-        boardBalls: balls,
-        mergeFeedback: MergeFeedback.wrong,
-        clearDragging: true,
-      )));
+      emit(
+        GamePlaying(
+          gs.copyWith(
+            boardBalls: balls,
+            mergeFeedback: MergeFeedback.wrong,
+            clearDragging: true,
+          ),
+        ),
+      );
       return;
     }
 
@@ -311,31 +326,39 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
         return;
       }
       boardBalls = _separateBoard(boardBalls);
-      emit(GamePlaying(gs.copyWith(
-        phase: phase,
-        boardBalls: boardBalls,
-        trayBalls: trayBalls,
-        completedWordIds: completedIds,
-        mergeFeedback: MergeFeedback.wordComplete,
-        snapBallId: result.resultBall.id,
-        clearDragging: true,
-        clearLastWrong: true,
-      )));
+      emit(
+        GamePlaying(
+          gs.copyWith(
+            phase: phase,
+            boardBalls: boardBalls,
+            trayBalls: trayBalls,
+            completedWordIds: completedIds,
+            mergeFeedback: MergeFeedback.wordComplete,
+            snapBallId: result.resultBall.id,
+            clearDragging: true,
+            clearLastWrong: true,
+          ),
+        ),
+      );
       return;
     } else if (result.isCorrect && gs.phase == GamePhase.buildingWords) {
       boardBalls = _separateBoard(boardBalls);
     }
 
-    emit(GamePlaying(gs.copyWith(
-      phase: phase,
-      boardBalls: boardBalls,
-      trayBalls: trayBalls,
-      completedWordIds: completedIds,
-      mergeFeedback: MergeFeedback.correct,
-      snapBallId: result.resultBall.id,
-      clearDragging: true,
-      clearLastWrong: true,
-    )));
+    emit(
+      GamePlaying(
+        gs.copyWith(
+          phase: phase,
+          boardBalls: boardBalls,
+          trayBalls: trayBalls,
+          completedWordIds: completedIds,
+          mergeFeedback: MergeFeedback.correct,
+          snapBallId: result.resultBall.id,
+          clearDragging: true,
+          clearLastWrong: true,
+        ),
+      ),
+    );
   }
 
   void _onSpawnNext(SpawnNextBall event, Emitter<GameBlocState> emit) {
@@ -344,15 +367,19 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
     if (current.gameState.phase != GamePhase.buildingWords) return;
     if (current.gameState.queue.isEmpty) return;
 
-    final ball = _spawnBallFromQueue(current.gameState, boardWidth: _boardWidth);
+    final ball = _spawnBallFromQueue(
+      current.gameState,
+      boardWidth: _boardWidth,
+    );
     if (ball == null) return;
 
     final queue = List<Ball>.from(current.gameState.queue)..removeAt(0);
     final boardBalls = [...current.gameState.boardBalls, ball];
-    emit(GamePlaying(current.gameState.copyWith(
-      boardBalls: boardBalls,
-      queue: queue,
-    )));
+    emit(
+      GamePlaying(
+        current.gameState.copyWith(boardBalls: boardBalls, queue: queue),
+      ),
+    );
   }
 
   void _onApplyHint(ApplyHint event, Emitter<GameBlocState> emit) {
@@ -362,10 +389,12 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
     if (gs.phase != GamePhase.buildingWords) return;
 
     final fragments = gs.boardBalls
-        .where((b) =>
-            b.type != BallType.decoy &&
-            (b.type == BallType.fragment ||
-                b.type == BallType.wordInProgress))
+        .where(
+          (b) =>
+              b.type != BallType.decoy &&
+              (b.type == BallType.fragment ||
+                  b.type == BallType.wordInProgress),
+        )
         .toList();
 
     for (var i = 0; i < fragments.length; i++) {
@@ -410,8 +439,7 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
       }
       if (b.wordId == word.id) return true;
       if (word.fragments.contains(b.chars)) return true;
-      return b.type == BallType.wordInProgress &&
-          word.text.startsWith(b.chars);
+      return b.type == BallType.wordInProgress && word.text.startsWith(b.chars);
     }).toList();
     if (wordBalls.length < 2) return;
 
@@ -467,12 +495,14 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
       add(const SpawnNextBall());
       return;
     }
-    emit(GamePlaying(
-      current.gameState.copyWith(
-        timeLeftSeconds: current.gameState.timeLeftSeconds +
-            GameConstants.secondsPerWord,
+    emit(
+      GamePlaying(
+        current.gameState.copyWith(
+          timeLeftSeconds:
+              current.gameState.timeLeftSeconds + GameConstants.secondsPerWord,
+        ),
       ),
-    ));
+    );
   }
 
   void _onApplyMagicWand(ApplyMagicWand event, Emitter<GameBlocState> emit) {
@@ -490,32 +520,38 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
 
     final boardBalls = gs.boardBalls.where((b) => b.id != junkId).toList()
       ..addAll(split);
-    emit(GamePlaying(gs.copyWith(
-      boardBalls: boardBalls,
-      clearLastWrong: true,
-    )));
+    emit(
+      GamePlaying(gs.copyWith(boardBalls: boardBalls, clearLastWrong: true)),
+    );
   }
 
-  void _onClearMergeFeedback(ClearMergeFeedback event, Emitter<GameBlocState> emit) {
+  void _onClearMergeFeedback(
+    ClearMergeFeedback event,
+    Emitter<GameBlocState> emit,
+  ) {
     final current = state;
     if (current is! GamePlaying) return;
-    emit(GamePlaying(
-      current.gameState.copyWith(
-        mergeFeedback: MergeFeedback.none,
-        clearSnap: true,
+    emit(
+      GamePlaying(
+        current.gameState.copyWith(
+          mergeFeedback: MergeFeedback.none,
+          clearSnap: true,
+        ),
       ),
-    ));
+    );
   }
 
   void _onAddExtraMoves(AddExtraMoves event, Emitter<GameBlocState> emit) {
     final current = state;
     if (current is! GamePlaying) return;
-    emit(GamePlaying(
-      current.gameState.copyWith(
-        timeLeftSeconds: current.gameState.timeLeftSeconds +
-            GameConstants.secondsPerWord,
+    emit(
+      GamePlaying(
+        current.gameState.copyWith(
+          timeLeftSeconds:
+              current.gameState.timeLeftSeconds + GameConstants.secondsPerWord,
+        ),
       ),
-    ));
+    );
   }
 
   void _onReset(ResetGame event, Emitter<GameBlocState> emit) {
@@ -550,15 +586,17 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
       timeLeftSeconds: gs.timeLeftSeconds,
       timeTotalSeconds: gs.timeTotalSeconds,
     );
-    emit(GameWon(
-      gs.copyWith(
-        phase: GamePhase.won,
-        boardBalls: boardBalls,
-        trayBalls: trayBalls,
-        completedWordIds: completedWordIds,
+    emit(
+      GameWon(
+        gs.copyWith(
+          phase: GamePhase.won,
+          boardBalls: boardBalls,
+          trayBalls: trayBalls,
+          completedWordIds: completedWordIds,
+        ),
+        stars: stars,
       ),
-      stars: stars,
-    ));
+    );
   }
 
   double _distance(Ball a, Ball b) {

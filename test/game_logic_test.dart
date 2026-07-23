@@ -34,20 +34,26 @@ void main() {
 
   group('CalculateStarRating', () {
     test('returns 3 stars when 30%+ time remains', () {
-      final rating =
-          CalculateStarRating().call(timeLeftSeconds: 60, timeTotalSeconds: 90);
+      final rating = CalculateStarRating().call(
+        timeLeftSeconds: 60,
+        timeTotalSeconds: 90,
+      );
       expect(rating, 3);
     });
 
     test('returns 2 stars when 10-30% time remains', () {
-      final rating =
-          CalculateStarRating().call(timeLeftSeconds: 15, timeTotalSeconds: 90);
+      final rating = CalculateStarRating().call(
+        timeLeftSeconds: 15,
+        timeTotalSeconds: 90,
+      );
       expect(rating, 2);
     });
 
     test('returns 1 star when less than 10% remains', () {
-      final rating =
-          CalculateStarRating().call(timeLeftSeconds: 5, timeTotalSeconds: 90);
+      final rating = CalculateStarRating().call(
+        timeLeftSeconds: 5,
+        timeTotalSeconds: 90,
+      );
       expect(rating, 1);
     });
   });

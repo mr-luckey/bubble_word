@@ -8,6 +8,11 @@ import '../constants/app_dimensions.dart';
 abstract final class BoardLayout {
   static const double _margin = 2;
 
+  static int? _cachedCount;
+  static double? _cachedWidth;
+  static double? _cachedHeight;
+  static double? _cachedRadius;
+
   /// Largest radius that fits [ballCount] balls across width, stacked from bottom.
   static double uniformBoardRadius({
     required int ballCount,
@@ -16,6 +21,13 @@ abstract final class BoardLayout {
   }) {
     if (ballCount <= 0 || width <= 0 || height <= 0) {
       return AppDimensions.ballRadiusSmall * AppDimensions.scaleForWidth(width);
+    }
+
+    if (_cachedCount == ballCount &&
+        _cachedWidth == width &&
+        _cachedHeight == height &&
+        _cachedRadius != null) {
+      return _cachedRadius!;
     }
 
     final usableW = width - 2 * _margin;
@@ -31,6 +43,11 @@ abstract final class BoardLayout {
         hi = mid;
       }
     }
+
+    _cachedCount = ballCount;
+    _cachedWidth = width;
+    _cachedHeight = height;
+    _cachedRadius = lo;
     return lo;
   }
 

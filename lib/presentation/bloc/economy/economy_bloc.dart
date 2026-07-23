@@ -204,7 +204,15 @@ class EconomyBloc extends Bloc<EconomyEvent, EconomyBlocState> {
     }
 
     if (changed) {
-      await _persist(emit, economy);
+      final livesOrHeartsChanged =
+          economy.lives != state.economy.lives ||
+          economy.goldenHearts != state.economy.goldenHearts;
+      // Countdown ticks: update UI without Hive I/O every second.
+      if (livesOrHeartsChanged) {
+        await _persist(emit, economy);
+      } else {
+        emit(EconomyBlocState(economy));
+      }
     }
   }
 

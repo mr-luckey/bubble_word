@@ -43,6 +43,7 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
   late AnimationController _floatController;
   late AnimationController _shakeController;
   late AnimationController _snapController;
+  late Listenable _animListenable;
 
   @override
   void initState() {
@@ -51,9 +52,6 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
       vsync: this,
       duration: const Duration(milliseconds: 2800),
     );
-    if (widget.enableIdleFloat && !widget.ball.isDragging) {
-      _floatController.repeat(reverse: true);
-    }
     _shakeController = AnimationController(
       vsync: this,
       duration: AppDimensions.shakeAnimation,
@@ -62,6 +60,12 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
       vsync: this,
       duration: AppDimensions.mergeAnimation,
     );
+    _animListenable = Listenable.merge([
+      _floatController,
+      _shakeController,
+      _snapController,
+    ]);
+    _syncFloat();
   }
 
   @override
@@ -73,6 +77,23 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
     }
     if (widget.mergeSnapping && !oldWidget.mergeSnapping) {
       _snapController.forward(from: 0);
+    }
+    if (widget.enableIdleFloat != oldWidget.enableIdleFloat ||
+        widget.ball.isDragging != oldWidget.ball.isDragging ||
+        widget.compact != oldWidget.compact) {
+      _syncFloat();
+    }
+  }
+
+  void _syncFloat() {
+    final shouldFloat =
+        !widget.compact && widget.enableIdleFloat && !widget.ball.isDragging;
+    if (shouldFloat) {
+      if (!_floatController.isAnimating) {
+        _floatController.repeat(reverse: true);
+      }
+    } else if (_floatController.isAnimating) {
+      _floatController.stop();
     }
   }
 
@@ -94,15 +115,59 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
               charCount: widget.ball.chars.length,
               isDecoy: widget.ball.type == BallType.decoy,
             );
-    final size = AppDimensions.visualBallSize(radius) + (widget.compact ? -12 : 0);
+    final size =
+        AppDimensions.visualBallSize(radius) + (widget.compact ? -12 : 0);
+
+    // Built once per ball prop change — NOT every float frame.
+    final ballFace = RepaintBoundary(
+      child: GestureDetector(
+        onPanStart: widget.onPanStart,
+        onPanUpdate: widget.onPanUpdate,
+        onPanEnd: widget.onPanEnd,
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: CustomPaint(
+            painter: _MarbleBallPainter(
+              ball: widget.ball,
+              radius: radius,
+              showProgressRing: widget.showProgressRing,
+              isDragging: widget.ball.isDragging,
+            ),
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: radius * 0.08),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Text(
+                        widget.ball.chars,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        style: AppTextStyles.ballTextStroke(radius: radius),
+                      ),
+                      Text(
+                        widget.ball.chars,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        style: AppTextStyles.ballText(radius: radius),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
 
     return AnimatedBuilder(
-      animation: Listenable.merge([
-        _floatController,
-        _shakeController,
-        _snapController,
-      ]),
-      builder: (context, _) {
+      animation: _animListenable,
+      child: ballFace,
+      builder: (context, child) {
         final floatY = !widget.compact &&
                 widget.enableIdleFloat &&
                 !widget.ball.isDragging
@@ -120,37 +185,7 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
           offset: Offset(shakeX, floatY),
           child: Transform.scale(
             scale: snapScale * dragScale,
-            child: GestureDetector(
-              onPanStart: widget.onPanStart,
-              onPanUpdate: widget.onPanUpdate,
-              onPanEnd: widget.onPanEnd,
-              child: SizedBox(
-                width: size,
-                height: size,
-                child: CustomPaint(
-                  painter: _MarbleBallPainter(
-                    ball: widget.ball,
-                    radius: radius,
-                    showProgressRing: widget.showProgressRing,
-                    isDragging: widget.ball.isDragging,
-                  ),
-                  child: Center(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: radius * 0.08),
-                        child: Text(
-                          widget.ball.chars,
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          style: AppTextStyles.ballText(context, radius: radius),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            child: child,
           ),
         );
       },
@@ -246,7 +281,8 @@ class _MarbleBallPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1
-        ..color = Color.lerp(shade, Colors.black, 0.15)!.withValues(alpha: 0.28),
+        ..color =
+            Color.lerp(shade, Colors.black, 0.15)!.withValues(alpha: 0.28),
     );
 
     if (ball.isHighlighted) {
@@ -333,5 +369,6 @@ class _MarbleBallPainter extends CustomPainter {
   bool shouldRepaint(covariant _MarbleBallPainter oldDelegate) =>
       oldDelegate.ball != ball ||
       oldDelegate.radius != radius ||
-      oldDelegate.isDragging != isDragging;
+      oldDelegate.isDragging != isDragging ||
+      oldDelegate.showProgressRing != showProgressRing;
 }

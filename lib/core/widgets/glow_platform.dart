@@ -10,14 +10,18 @@ class GlowPlatform extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _GlowPlatformPainter(),
-      size: Size.infinite,
+    return const RepaintBoundary(
+      child: CustomPaint(
+        painter: _GlowPlatformPainter(),
+        size: Size.infinite,
+      ),
     );
   }
 }
 
 class _GlowPlatformPainter extends CustomPainter {
+  const _GlowPlatformPainter();
+
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height * 0.55);

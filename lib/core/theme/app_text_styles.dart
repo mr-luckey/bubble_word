@@ -45,14 +45,39 @@ abstract final class AppTextStyles {
     );
   }
 
-  static TextStyle ballText(BuildContext context, {required double radius}) {
-    return GoogleFonts.nunito(
-      fontSize: radius * 0.54,
-      fontWeight: FontWeight.w900,
-      color: Colors.white,
-      decoration: TextDecoration.none,
-      letterSpacing: 0.3,
-      height: 1.0,
+  static final Map<int, TextStyle> _ballFillCache = {};
+  static final Map<int, TextStyle> _ballStrokeCache = {};
+
+  static int _ballRadiusKey(double radius) => (radius * 10).round();
+
+  /// Cached — safe to call from hot paths (no per-frame GoogleFonts).
+  static TextStyle ballText({required double radius}) {
+    final key = _ballRadiusKey(radius);
+    return _ballFillCache.putIfAbsent(
+      key,
+      () => GoogleFonts.nunito(
+        fontSize: radius * 0.54,
+        fontWeight: FontWeight.w900,
+        color: Colors.white,
+        decoration: TextDecoration.none,
+        letterSpacing: 0.3,
+        height: 1.0,
+      ),
+    );
+  }
+
+  /// Light black outline so ball letters stay readable on bright marbles.
+  static TextStyle ballTextStroke({required double radius}) {
+    final key = _ballRadiusKey(radius);
+    return _ballStrokeCache.putIfAbsent(
+      key,
+      () => ballText(radius: radius).copyWith(
+        color: null,
+        foreground: Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = (radius * 0.045).clamp(1.0, 2.2)
+          ..color = Colors.black.withValues(alpha: 0.55),
+      ),
     );
   }
 

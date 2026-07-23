@@ -22,7 +22,8 @@ void main() {
         ),
       ),
     );
-    expect(find.text('BL'), findsOneWidget);
+    // Fill + stroke layers share the same text.
+    expect(find.text('BL'), findsNWidgets(2));
   });
 
   testWidgets('BubbleBallWidget renders complete word ball', (tester) async {
@@ -41,6 +42,6 @@ void main() {
         ),
       ),
     );
-    expect(find.text('BLUE'), findsOneWidget);
+    expect(find.text('BLUE'), findsNWidgets(2));
   });
 }

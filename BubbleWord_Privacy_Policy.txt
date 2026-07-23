@@ -1,0 +1,205 @@
+================================================================================
+  BUBBLEWORD PRIVACY POLICY
+================================================================================
+
+Effective date: July 23, 2026
+App: BubbleWord: Merge Word Balls & Category Puzzle
+Developer: Appware Technologies
+Contact: contact@appwaretech.com
+
+--------------------------------------------------------------------------------
+
+Appware Technologies ("we," "us," or "our") operates the mobile application
+BubbleWord (the "App"). This Privacy Policy explains how we collect, use,
+disclose, and protect information when you use BubbleWord. By installing or
+using the App, you agree to this Privacy Policy.
+
+
+1. INFORMATION WE COLLECT
+--------------------------------------------------------------------------------
+
+BubbleWord is designed to work primarily offline. We do not require you to
+create an account or provide your name, email address, or phone number to play.
+
+1.1 Information stored on your device
+
+The App may store the following locally on your device (for example via device
+storage / SharedPreferences):
+
+  • Game progress (levels completed, scores, unlocks)
+  • In-game currency, coins, lives, and related economy state
+  • Settings preferences (sound, music, haptics)
+  • Purchase status (for example, "Remove Ads")
+
+This data stays on your device unless you clear app data or uninstall the App.
+
+1.2 Information collected automatically (via advertising & device services)
+
+When you use online features (such as ads or update checks), certain technical
+information may be collected by us or our partners, which may include:
+
+  • Device type, operating system, and app version
+  • Advertising identifiers (such as Google Advertising ID / IDFA, subject to
+    your device settings)
+  • IP address and approximate location derived from network data
+  • Ad interaction data (impressions, clicks, rewarded video completion)
+  • Diagnostic or crash-related information if provided by platform services
+
+
+2. HOW WE USE INFORMATION
+--------------------------------------------------------------------------------
+
+We use information to:
+
+  • Provide, operate, and improve BubbleWord
+  • Save your progress and preferences on your device
+  • Show advertisements and measure ad performance
+  • Process in-app purchases (via Google Play / Apple App Store)
+  • Check for app updates where applicable
+  • Respond to support requests you send us
+  • Comply with legal obligations
+
+
+3. ADVERTISING
+--------------------------------------------------------------------------------
+
+BubbleWord uses Google AdMob (and may use related Google advertising services)
+to display banner, interstitial, and/or rewarded ads.
+
+AdMob and its partners may collect and process data as described in Google's
+policies, including for personalized or non-personalized ads depending on your
+region, consent choices, and device settings.
+
+  • Google Privacy Policy:
+    https://policies.google.com/privacy
+  • How Google uses data from apps:
+    https://policies.google.com/technologies/partner-sites
+  • AdMob / advertising opt-out (Android):
+    device Settings → Google → Ads
+  • Ad tracking (iOS):
+    device Settings → Privacy & Security → Tracking
+
+You may also purchase a "Remove Ads" (or similar) in-app option where available,
+which limits or removes ads in the App according to the product description.
+
+
+4. IN-APP PURCHASES
+--------------------------------------------------------------------------------
+
+Purchases are processed by Google Play Store or Apple App Store. We do not
+receive or store your full payment card details. Purchase confirmation and
+entitlement status may be stored locally on your device to unlock features
+(such as removing ads).
+
+Payment and billing data are handled under the privacy policies of Google or
+Apple, as applicable.
+
+
+5. INTERNET ACCESS
+--------------------------------------------------------------------------------
+
+The App may use internet connectivity to:
+
+  • Load and display advertisements
+  • Check for available app updates from store listing APIs
+  • Restore or validate purchases where required by the platform
+
+Core puzzle gameplay and level content can be used offline once installed.
+
+
+6. DATA SHARING
+--------------------------------------------------------------------------------
+
+We do not sell your personal information. We may share information only as
+follows:
+
+  • Service providers / partners: Google (AdMob, Play services) and Apple
+    (App Store services) as needed to operate ads, distribution, and purchases
+  • Legal requirements: if required by law, regulation, legal process, or to
+    protect rights, safety, or property
+  • Business transfers: in connection with a merger, acquisition, or sale of
+    assets, subject to this Policy's protections
+
+
+7. DATA RETENTION
+--------------------------------------------------------------------------------
+
+Local game data remains on your device until you clear app storage, reset
+progress (if offered), or uninstall the App. Advertising partners retain data
+according to their own policies and retention periods. If you email us for
+support, we retain your message only as long as needed to respond and for
+reasonable business records.
+
+
+8. CHILDREN'S PRIVACY
+--------------------------------------------------------------------------------
+
+BubbleWord is a general-audience puzzle game. We do not knowingly collect
+personal information from children under 13 (or the equivalent minimum age in
+your jurisdiction) for the purpose of selling it or creating profiles outside
+advertising platform rules.
+
+If you are a parent or guardian and believe a child has provided personal
+information to us directly (for example via email), please contact us at
+contact@appwaretech.com and we will take appropriate steps to delete it.
+
+Note: Third-party ads may appear in the App. Parents can use device-level ad
+and tracking controls described in Section 3.
+
+
+9. YOUR CHOICES & RIGHTS
+--------------------------------------------------------------------------------
+
+Depending on your location (for example EU/EEA, UK, California), you may have
+rights to:
+
+  • Access, correct, or delete personal information we hold about you
+  • Object to or restrict certain processing
+  • Withdraw consent where processing is based on consent
+  • Opt out of personalized advertising via device/OS settings
+
+To exercise rights related to data we control (for example support emails),
+contact contact@appwaretech.com. For advertising identifier data held by Google
+or other ad partners, use their tools and your device settings.
+
+
+10. SECURITY
+--------------------------------------------------------------------------------
+
+We take reasonable technical and organizational measures to protect information
+related to the App. However, no method of electronic storage or transmission is
+100% secure. Please keep your device updated and protected.
+
+
+11. INTERNATIONAL USERS
+--------------------------------------------------------------------------------
+
+If you use the App from outside the country where our servers or service
+providers operate, your information may be processed in other countries that
+may have different data protection laws. By using the App, you acknowledge such
+processing as described in this Policy and in our partners' policies.
+
+
+12. CHANGES TO THIS POLICY
+--------------------------------------------------------------------------------
+
+We may update this Privacy Policy from time to time. The "Effective date" at
+the top will be revised when changes are posted. Continued use of the App after
+changes means you accept the updated Policy. Material changes may also be noted
+in the App Store / Play Store listing where appropriate.
+
+
+13. CONTACT US
+--------------------------------------------------------------------------------
+
+If you have questions about this Privacy Policy or BubbleWord's privacy
+practices, contact:
+
+  Appware Technologies
+  Email: contact@appwaretech.com
+  App: BubbleWord (com.appwaretech.bubbleword)
+
+
+================================================================================
+  © 2026 Appware Technologies. All rights reserved.
+================================================================================

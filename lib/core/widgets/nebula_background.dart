@@ -29,8 +29,12 @@ class NebulaBackground extends StatelessWidget {
             ),
           ),
         ),
-        CustomPaint(painter: _NebulaPainter()),
-        CustomPaint(painter: _StarsPainter()),
+        const RepaintBoundary(
+          child: CustomPaint(painter: _NebulaPainter()),
+        ),
+        const RepaintBoundary(
+          child: CustomPaint(painter: _StarsPainter()),
+        ),
         child,
       ],
     );
@@ -38,6 +42,8 @@ class NebulaBackground extends StatelessWidget {
 }
 
 class _NebulaPainter extends CustomPainter {
+  const _NebulaPainter();
+
   @override
   void paint(Canvas canvas, Size size) {
     final purple = Paint()
@@ -78,6 +84,8 @@ class _NebulaPainter extends CustomPainter {
 }
 
 class _StarsPainter extends CustomPainter {
+  const _StarsPainter();
+
   static final _rng = math.Random(7);
   static final _stars = List.generate(80, (_) {
     return (
