@@ -5,27 +5,29 @@
 abstract final class AdConstants {
   // ── Rewarded (hint / extra lives, etc.) ─────────────────────────────
   static const List<String> rewardedUnitIds = [
-    'ca-app-pub-3940256099942544/5224354917', // Google test — replace
-    // 'ca-app-pub-XXXX~YYYY/REWARDED_2',
-    // 'ca-app-pub-XXXX~YYYY/REWARDED_3',
-    // 'ca-app-pub-XXXX~YYYY/REWARDED_4',
-    // 'ca-app-pub-XXXX~YYYY/REWARDED_5',
+    'ca-app-pub-5561438827097019/7298530346', // Google test — replace
+    'ca-app-pub-5561438827097019/8109049133',
+    'ca-app-pub-5561438827097019/2841124590',
+    'ca-app-pub-5561438827097019/4481509328',
+    'ca-app-pub-5561438827097019/6935568263',
   ];
 
   // ── Interstitial (every N levels / hint gate) ───────────────────────
   static const List<String> interstitialUnitIds = [
-    'ca-app-pub-3940256099942544/1033173712', // Google test — replace
-    // 'ca-app-pub-XXXX~YYYY/INTERSTITIAL_2',
-    // 'ca-app-pub-XXXX~YYYY/INTERSTITIAL_3',
-    // 'ca-app-pub-XXXX~YYYY/INTERSTITIAL_4',
-    // 'ca-app-pub-XXXX~YYYY/INTERSTITIAL_5',
+    'ca-app-pub-5561438827097019/5331556567', // Google test — replace
+    'ca-app-pub-5561438827097019/4673081015',
+    'ca-app-pub-5561438827097019/3359999344',
+    'ca-app-pub-5561438827097019/4476925888',
+    'ca-app-pub-5561438827097019/9190910529',
   ];
 
   // ── Banner (home / map) ─────────────────────────────────────────────
   static const List<String> bannerUnitIds = [
-    'ca-app-pub-3940256099942544/6300978111', // Google test — replace
-    // 'ca-app-pub-XXXX~YYYY/BANNER_2',
-    // 'ca-app-pub-XXXX~YYYY/BANNER_3',
+    'ca-app-pub-5561438827097019/7127139958', // Google test — replace
+    'ca-app-pub-5561438827097019/5658859622',
+    'ca-app-pub-5561438827097019/8612326029',
+    'ca-app-pub-5561438827097019/4345777953',
+    'ca-app-pub-5561438827097019/6364722626',
   ];
 
   /// Non-empty IDs only (safe for load loops).

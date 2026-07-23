@@ -1,15 +1,9 @@
 /// Store & release config.
-///
-/// TODO: Replace example IDs with your real values before publishing:
-/// - [androidPackage] → e.g. `com.yourcompany.bubbleword`
-/// - [iosAppStoreId] → numeric ID from App Store Connect
 abstract final class AppConfig {
-  // --- Example placeholders (replace before release) ---
+  /// Google Play application ID (must match android applicationId).
+  static const String androidPackage = 'com.appwaretech.bubbleword';
 
-  /// Google Play application ID (example).
-  static const String androidPackage = 'com.bubbleword.app';
-
-  /// App Store Connect numeric app ID (example).
+  /// App Store Connect numeric app ID (replace when iOS ships).
   static const String iosAppStoreId = '1234567890';
 
   static const String androidStoreUrl =
