@@ -43,6 +43,7 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
   late AnimationController _floatController;
   late AnimationController _shakeController;
   late AnimationController _snapController;
+  late AnimationController _beatController;
   late Listenable _animListenable;
 
   @override
@@ -60,12 +61,18 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
       vsync: this,
       duration: AppDimensions.mergeAnimation,
     );
+    _beatController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
     _animListenable = Listenable.merge([
       _floatController,
       _shakeController,
       _snapController,
+      _beatController,
     ]);
     _syncFloat();
+    _syncBeat();
   }
 
   @override
@@ -83,6 +90,10 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
         widget.compact != oldWidget.compact) {
       _syncFloat();
     }
+    if (widget.ball.isHighlighted != oldWidget.ball.isHighlighted ||
+        widget.ball.isDragging != oldWidget.ball.isDragging) {
+      _syncBeat();
+    }
   }
 
   void _syncFloat() {
@@ -97,11 +108,26 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
     }
   }
 
+  void _syncBeat() {
+    final shouldBeat =
+        widget.ball.isHighlighted && !widget.ball.isDragging && !widget.compact;
+    if (shouldBeat) {
+      if (!_beatController.isAnimating) {
+        _beatController.repeat(reverse: true);
+      }
+    } else if (_beatController.isAnimating) {
+      _beatController
+        ..stop()
+        ..value = 0;
+    }
+  }
+
   @override
   void dispose() {
     _floatController.dispose();
     _shakeController.dispose();
     _snapController.dispose();
+    _beatController.dispose();
     super.dispose();
   }
 
@@ -185,11 +211,17 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
         final snapScale = widget.mergeSnapping
             ? 1.0 + Curves.elasticOut.transform(_snapController.value) * 0.15
             : 1.0;
+        final beatScale = widget.ball.isHighlighted && !widget.ball.isDragging
+            ? 1.0 + Curves.easeInOut.transform(_beatController.value) * 0.12
+            : 1.0;
         final dragScale = widget.ball.isDragging ? 1.1 : 1.0;
 
         return Transform.translate(
           offset: Offset(shakeX, floatY),
-          child: Transform.scale(scale: snapScale * dragScale, child: child),
+          child: Transform.scale(
+            scale: snapScale * dragScale * beatScale,
+            child: child,
+          ),
         );
       },
     );

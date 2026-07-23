@@ -113,10 +113,7 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
       return b.copyWith(x: updated.x, y: updated.y);
     }).toList();
 
-    emit(GamePlaying(current.gameState.copyWith(
-      boardBalls: boardBalls,
-      dropComplete: false,
-    )));
+    emit(GamePlaying(current.gameState.copyWith(boardBalls: boardBalls)));
   }
 
   List<Ball> _separateBoard(List<Ball> balls) {

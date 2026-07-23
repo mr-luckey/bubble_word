@@ -151,7 +151,13 @@ class _GameScreenState extends State<GameScreen>
 
     if (sizeChanged) {
       _gameBloc.add(RelayoutBoard(boardWidth: width, boardHeight: height));
-      _startDropAnimation();
+      // Never replay intro drop after it finished (e.g. returning from ads).
+      final playing = _gameBloc.state;
+      final dropDone =
+          playing is GamePlaying && playing.gameState.dropComplete;
+      if (!dropDone) {
+        _startDropAnimation();
+      }
     }
   }
 
