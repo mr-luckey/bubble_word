@@ -92,21 +92,6 @@ class LocalNotificationService {
           debugPrint('Notification permission denied (POST_NOTIFICATIONS).');
           return false;
         }
-
-        if (_config.testMode) {
-          final canExact =
-              await android.canScheduleExactNotifications() ?? true;
-          if (!canExact) {
-            final exactOk =
-                await android.requestExactAlarmsPermission() ?? false;
-            if (!exactOk) {
-              debugPrint(
-                'Exact alarm permission denied. Test notifications may be '
-                'delayed; enable Alarms & reminders in system settings.',
-              );
-            }
-          }
-        }
         return true;
       }
 
@@ -166,15 +151,6 @@ class LocalNotificationService {
         interruptionLevel: InterruptionLevel.timeSensitive,
       ),
     );
-  }
-
-  Future<AndroidScheduleMode> _androidScheduleModeForTest() async {
-    final android = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
-    final canExact = await android?.canScheduleExactNotifications() ?? true;
-    return canExact
-        ? AndroidScheduleMode.exactAllowWhileIdle
-        : AndroidScheduleMode.inexactAllowWhileIdle;
   }
 
   /// Safe to call on every launch. Does not create duplicates.
@@ -289,7 +265,7 @@ class LocalNotificationService {
   Future<int> _scheduleTestBurst(List<NotificationMessage> messages) async {
     var scheduled = 0;
     final now = tz.TZDateTime.now(tz.local);
-    final androidScheduleMode = await _androidScheduleModeForTest();
+    const androidScheduleMode = AndroidScheduleMode.inexactAllowWhileIdle;
     final details = _testNotificationDetails();
     final first = messages.first;
 
