@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "771384007580",
+    "project_id": "bubble-word-63f70",
+    "storage_bucket": "bubble-word-63f70.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:771384007580:android:5b64c26dbe0c4646d84659",
+        "android_client_info": {
+          "package_name": "com.appwaretech.bubbleword"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCl_dCff8IlQ2BvDD30q3xXHaW7kzTFH-k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

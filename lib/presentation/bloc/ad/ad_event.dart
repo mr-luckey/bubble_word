@@ -1,5 +1,7 @@
 part of 'ad_bloc.dart';
 
+enum AdFormat { interstitial, rewarded }
+
 sealed class AdEvent extends Equatable {
   const AdEvent();
 
@@ -11,26 +13,37 @@ class InitializeAds extends AdEvent {
   const InitializeAds();
 }
 
+class PreloadAdPlacement extends AdEvent {
+  const PreloadAdPlacement({
+    required this.format,
+    required this.placement,
+  });
+
+  final AdFormat format;
+  final String placement;
+
+  @override
+  List<Object?> get props => [format, placement];
+}
+
 class ShowRewardedAd extends AdEvent {
-  const ShowRewardedAd();
+  const ShowRewardedAd({
+    this.placement = AdsPlacements.rewardedHint,
+  });
+
+  final String placement;
+
+  @override
+  List<Object?> get props => [placement];
 }
 
 class ShowInterstitialAd extends AdEvent {
-  const ShowInterstitialAd();
-}
+  const ShowInterstitialAd({
+    this.placement = AdsPlacements.interstitialAfterLevel,
+  });
 
-class AdCompleted extends AdEvent {
-  const AdCompleted({required this.rewarded});
-  final bool rewarded;
-
-  @override
-  List<Object?> get props => [rewarded];
-}
-
-class AdFailed extends AdEvent {
-  const AdFailed(this.message);
-  final String message;
+  final String placement;
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [placement];
 }

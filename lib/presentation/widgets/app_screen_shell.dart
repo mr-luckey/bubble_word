@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/game_constants.dart';
+import '../../core/config/ads_config.dart';
 import '../../core/widgets/banner_ad_widget.dart';
 import '../../core/widgets/nebula_background.dart';
 import 'top_status_bar.dart';
@@ -13,6 +14,7 @@ class AppScreenShell extends StatelessWidget {
     required this.body,
     this.bottomNavIndex,
     this.showBanner = true,
+    this.bannerPlacement = AdsPlacements.home,
     this.showTopBar = false,
     this.hearts,
     this.maxHearts = GameConstants.maxHearts,
@@ -23,6 +25,7 @@ class AppScreenShell extends StatelessWidget {
   final Widget body;
   final int? bottomNavIndex;
   final bool showBanner;
+  final String bannerPlacement;
   final bool showTopBar;
   final int? hearts;
   final int maxHearts;
@@ -45,7 +48,7 @@ class AppScreenShell extends StatelessWidget {
                   heartColor: heartColor,
                 ),
               Expanded(child: body),
-              if (showBanner) const BannerAdWidget(),
+              if (showBanner) BannerAdWidget(placement: bannerPlacement),
               if (bottomNavIndex != null)
                 BottomNavBar(currentIndex: bottomNavIndex!),
             ],

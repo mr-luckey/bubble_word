@@ -13,6 +13,12 @@ import '../../domain/usecases/check_board_overload.dart';
 import '../../domain/usecases/game_engine.dart';
 import '../../domain/usecases/get_level.dart';
 import '../../domain/usecases/validate_merge.dart';
+import '../config/ads_config.dart';
+import '../config/notification_config.dart';
+import '../services/ads_service.dart';
+import '../services/analytics_service.dart';
+import '../services/local_notification_service.dart';
+import '../services/network_guard.dart';
 import '../utils/audio_service.dart';
 import '../utils/rate_app_service.dart';
 import '../utils/update_service.dart';
@@ -56,6 +62,17 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton(AudioService.new);
   getIt.registerLazySingleton(UpdateService.new);
   getIt.registerLazySingleton(RateAppService.new);
+  getIt.registerLazySingleton(AnalyticsService.new);
+  getIt.registerLazySingleton(
+    () => LocalNotificationService(
+      prefs: getIt(),
+      config: const NotificationConfig(),
+    ),
+  );
+  getIt.registerLazySingleton(NetworkGuard.new);
+  getIt.registerLazySingleton(
+    () => AdsService(config: appAdsConfig, network: getIt()),
+  );
   await getIt<AudioService>().init();
 
   getIt.registerFactory(() => LevelBloc(getIt(), getIt()));
@@ -71,6 +88,8 @@ Future<void> configureDependencies() async {
     ),
   );
   getIt.registerLazySingleton(() => EconomyBloc(getIt()));
-  getIt.registerLazySingleton(AdBloc.new);
+  getIt.registerLazySingleton(
+    () => AdBloc(ads: getIt(), analytics: getIt()),
+  );
   getIt.registerLazySingleton(() => SettingsBloc(getIt()));
 }

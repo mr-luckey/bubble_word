@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../core/config/ads_config.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_dimensions.dart';
 import '../../core/constants/app_strings.dart';
@@ -46,6 +47,7 @@ class DailyChallengeScreen extends StatelessWidget {
         return AppScreenShell(
           bottomNavIndex: 1,
           showTopBar: true,
+          bannerPlacement: AdsPlacements.daily,
           hearts: economy.goldenHearts,
           maxHearts: GameConstants.maxGoldenHearts,
           refillSeconds: economy.goldenHeartRefillSeconds,

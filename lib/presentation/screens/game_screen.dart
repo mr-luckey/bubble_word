@@ -6,11 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/config/ads_config.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_dimensions.dart';
 import '../../core/constants/game_constants.dart';
 import '../../core/di/injection.dart';
 import '../../core/router/app_router.dart';
+import '../../core/services/analytics_service.dart';
 import '../../core/utils/audio_service.dart';
 import '../../core/utils/board_layout.dart';
 import '../../core/widgets/banner_ad_widget.dart';
@@ -64,6 +66,7 @@ class _GameScreenState extends State<GameScreen>
   _PendingAdAction? _pendingAd;
   Timer? _levelTimer;
   bool _lifeSpentForFail = false;
+  bool _dropAnimationStarted = false;
 
   @override
   void initState() {
@@ -85,6 +88,8 @@ class _GameScreenState extends State<GameScreen>
       _levelStarted = false;
       _layoutBallCount = 0;
       _lifeSpentForFail = false;
+      _dropAnimationStarted = false;
+      _dropController.reset();
       _stopLevelTimer();
     }
   }
@@ -93,13 +98,47 @@ class _GameScreenState extends State<GameScreen>
     if (_levelStarted) return;
     if (_boardWidth <= 0 || _boardHeight <= 0) return;
     _levelStarted = true;
+    _dropAnimationStarted = false;
+    _dropController.reset();
     _gameBloc.add(
       StartLevel(level, boardWidth: _boardWidth, boardHeight: _boardHeight),
     );
+    getIt<AnalyticsService>().logLevelStarted(
+      levelNumber: level.id,
+      difficulty: level.difficulty.name,
+      source: widget.isDailyChallenge ? 'daily' : 'campaign',
+    );
+    _preloadGameAds();
+  }
+
+  void _preloadGameAds() {
+    if (getIt<EconomyBloc>().state.economy.noAdsPurchased) return;
+    final ads = getIt<AdBloc>();
+    ads.add(
+      const PreloadAdPlacement(
+        format: AdFormat.rewarded,
+        placement: AdsPlacements.rewardedHint,
+      ),
+    );
+    ads.add(
+      const PreloadAdPlacement(
+        format: AdFormat.interstitial,
+        placement: AdsPlacements.interstitialAfterLevel,
+      ),
+    );
+  }
+
+  void _maybeStartDropAnimation() {
+    final playing = _gameBloc.state;
+    if (playing is! GamePlaying) return;
+    if (playing.gameState.dropComplete) return;
+    if (_dropAnimationStarted) return;
     _startDropAnimation();
   }
 
   void _startDropAnimation() {
+    if (_dropAnimationStarted && _dropController.isAnimating) return;
+    _dropAnimationStarted = true;
     _stopLevelTimer();
     _dropController.forward(from: 0).whenComplete(() {
       if (!mounted) return;
@@ -146,19 +185,11 @@ class _GameScreenState extends State<GameScreen>
 
     if (!_levelStarted) {
       _startLevelIfReady(level);
-      return;
+    } else if (sizeChanged) {
+      _gameBloc.add(RelayoutBoard(boardWidth: width, boardHeight: height));
     }
 
-    if (sizeChanged) {
-      _gameBloc.add(RelayoutBoard(boardWidth: width, boardHeight: height));
-      // Never replay intro drop after it finished (e.g. returning from ads).
-      final playing = _gameBloc.state;
-      final dropDone =
-          playing is GamePlaying && playing.gameState.dropComplete;
-      if (!dropDone) {
-        _startDropAnimation();
-      }
-    }
+    _maybeStartDropAnimation();
   }
 
   void _syncAudio(SettingsBlocState settings) {
@@ -223,6 +254,10 @@ class _GameScreenState extends State<GameScreen>
     final inv = economy.boosters;
 
     if (!inv.freeHintUsedThisLevel) {
+      getIt<AnalyticsService>().logHintUsed(
+        levelNumber: widget.levelId,
+        source: 'free',
+      );
       _boosterBloc.add(const UseHint());
       return;
     }
@@ -230,8 +265,16 @@ class _GameScreenState extends State<GameScreen>
     if (inv.hint > 0) {
       if (!economy.noAdsPurchased) {
         _pendingAd = _PendingAdAction.hintInterstitial;
-        context.read<AdBloc>().add(const ShowInterstitialAd());
+        context.read<AdBloc>().add(
+              const ShowInterstitialAd(
+                placement: AdsPlacements.interstitialHintGate,
+              ),
+            );
       } else {
+        getIt<AnalyticsService>().logHintUsed(
+          levelNumber: widget.levelId,
+          source: 'inventory',
+        );
         _boosterBloc.add(const UseHint());
       }
       return;
@@ -239,7 +282,9 @@ class _GameScreenState extends State<GameScreen>
 
     if (!economy.noAdsPurchased) {
       _pendingAd = _PendingAdAction.hintRewarded;
-      context.read<AdBloc>().add(const ShowRewardedAd());
+      context.read<AdBloc>().add(
+            const ShowRewardedAd(placement: AdsPlacements.rewardedHint),
+          );
     } else {
       _showSnackBar('No hints left');
     }
@@ -252,9 +297,21 @@ class _GameScreenState extends State<GameScreen>
 
     switch (pending) {
       case _PendingAdAction.hintInterstitial:
+        getIt<AnalyticsService>().logHintUsed(
+          levelNumber: widget.levelId,
+          source: 'inventory',
+        );
         _boosterBloc.add(const UseHint());
       case _PendingAdAction.hintRewarded:
         if (state.rewarded) {
+          getIt<AnalyticsService>().logRewardClaimed(
+            rewardType: 'hint',
+            source: 'rewarded_ad',
+          );
+          getIt<AnalyticsService>().logHintUsed(
+            levelNumber: widget.levelId,
+            source: 'rewarded_ad',
+          );
           final inv = context.read<EconomyBloc>().state.economy.boosters;
           context.read<EconomyBloc>().add(
                 UpdateBoosters(inv.copyWith(hint: inv.hint + 1)),
@@ -268,6 +325,14 @@ class _GameScreenState extends State<GameScreen>
 
   @override
   void dispose() {
+    final playing = _gameBloc.state;
+    if (playing is GamePlaying) {
+      getIt<AnalyticsService>().logLevelAbandoned(
+        levelNumber: playing.gameState.level.id,
+        difficulty: playing.gameState.level.difficulty.name,
+        source: widget.isDailyChallenge ? 'daily' : 'campaign',
+      );
+    }
     _stopLevelTimer();
     _dropController.dispose();
     _levelBloc.close();
@@ -290,6 +355,8 @@ class _GameScreenState extends State<GameScreen>
             listener: (context, state) {
               if (state is LevelLoaded) {
                 _levelStarted = false;
+                _dropAnimationStarted = false;
+                _dropController.reset();
               }
             },
           ),
@@ -335,6 +402,13 @@ class _GameScreenState extends State<GameScreen>
               if (state is GameWon) {
                 _stopLevelTimer();
                 _handleGameEndFeedback(context, state);
+                getIt<AnalyticsService>().logLevelCompleted(
+                  levelNumber: state.gameState.level.id,
+                  difficulty: state.gameState.level.difficulty.name,
+                  timeSeconds: state.gameState.timeTotalSeconds -
+                      state.gameState.timeLeftSeconds,
+                  source: widget.isDailyChallenge ? 'daily' : 'campaign',
+                );
                 if (!widget.isDailyChallenge) {
                   final economy = context.read<EconomyBloc>();
                   final levelsBefore =
@@ -345,13 +419,24 @@ class _GameScreenState extends State<GameScreen>
                   ));
                   if (!economy.state.economy.noAdsPurchased &&
                       levelsBefore + 1 >= 3) {
-                    context.read<AdBloc>().add(const ShowInterstitialAd());
+                    context.read<AdBloc>().add(
+                          const ShowInterstitialAd(
+                            placement: AdsPlacements.interstitialAfterLevel,
+                          ),
+                        );
                     economy.add(const ResetLevelsCompletedAd());
                   }
                 }
               } else if (state is GameFailed) {
                 _stopLevelTimer();
                 _handleGameEndFeedback(context, state);
+                getIt<AnalyticsService>().logLevelFailed(
+                  levelNumber: state.gameState.level.id,
+                  difficulty: state.gameState.level.difficulty.name,
+                  timeSeconds: state.gameState.timeTotalSeconds -
+                      state.gameState.timeLeftSeconds,
+                  source: widget.isDailyChallenge ? 'daily' : 'campaign',
+                );
                 if (!_lifeSpentForFail) {
                   _lifeSpentForFail = true;
                   final economy = context.read<EconomyBloc>();
@@ -389,7 +474,7 @@ class _GameScreenState extends State<GameScreen>
                       return Column(
                         children: [
                           Expanded(
-                            child: LevelCompleteOverlay(
+                            child:                             LevelCompleteOverlay(
                               gameState: gameState,
                               onNext: widget.isDailyChallenge
                                   ? () => context.go('/daily')
@@ -413,7 +498,7 @@ class _GameScreenState extends State<GameScreen>
                                   : () => context.go('/home'),
                             ),
                           ),
-                          const BannerAdWidget(),
+                          const BannerAdWidget(placement: AdsPlacements.result),
                         ],
                       );
                     }
@@ -421,7 +506,7 @@ class _GameScreenState extends State<GameScreen>
                       return Column(
                         children: [
                           Expanded(
-                            child: LevelFailOverlay(
+                            child:                             LevelFailOverlay(
                               gameState: gameState,
                               isDailyChallenge: widget.isDailyChallenge,
                               onRetry: () {
@@ -432,7 +517,18 @@ class _GameScreenState extends State<GameScreen>
                                     : economy.lives > 0;
                                 if (!canRetry) return;
                                 _lifeSpentForFail = false;
-                                _levelStarted = false;
+                                _levelStarted = true;
+                                _dropAnimationStarted = false;
+                                _dropController.reset();
+                                getIt<AnalyticsService>().logLevelStarted(
+                                  levelNumber: gameState.gameState.level.id,
+                                  difficulty:
+                                      gameState.gameState.level.difficulty.name,
+                                  source: widget.isDailyChallenge
+                                      ? 'daily'
+                                      : 'campaign',
+                                );
+                                _preloadGameAds();
                                 _gameBloc.add(StartLevel(
                                   gameState.gameState.level,
                                   boardWidth: _boardWidth,
@@ -445,7 +541,7 @@ class _GameScreenState extends State<GameScreen>
                                   : () => context.go('/home'),
                             ),
                           ),
-                          const BannerAdWidget(),
+                          const BannerAdWidget(placement: AdsPlacements.result),
                         ],
                       );
                     }
@@ -638,7 +734,7 @@ class _GameScreenState extends State<GameScreen>
             },
           ),
         ),
-        const BannerAdWidget(),
+        const BannerAdWidget(placement: AdsPlacements.game),
       ],
     );
   }
@@ -820,7 +916,7 @@ class _GameScreenState extends State<GameScreen>
             },
           ),
         ),
-        const BannerAdWidget(),
+        const BannerAdWidget(placement: AdsPlacements.game),
       ],
     );
   }

@@ -1,8 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import 'core/di/injection.dart';
 import 'core/router/app_router.dart';
+import 'core/services/analytics_service.dart';
+import 'core/services/local_notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/audio_service.dart';
 import 'presentation/bloc/ad/ad_bloc.dart';
@@ -12,8 +17,27 @@ import 'presentation/bloc/settings/settings_bloc.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await configureDependencies();
-  getIt<AdBloc>().add(const InitializeAds());
+  getIt<LocalNotificationService>().attachTapHandler((payload) {
+    getIt<AnalyticsService>().logNotificationOpened(
+      notificationId: payload,
+      source: 'local',
+    );
+    final context = rootNavigatorKey.currentContext;
+    if (context != null) {
+      GoRouter.of(context).go('/home');
+    }
+  });
+  unawaited(_startBackgroundServices());
   runApp(const BubbleWordApp());
+}
+
+Future<void> _startBackgroundServices() async {
+  try {
+    await getIt<AnalyticsService>().init();
+  } catch (_) {
+    // Analytics must never block gameplay.
+  }
+  getIt<AdBloc>().add(const InitializeAds());
 }
 
 class BubbleWordApp extends StatefulWidget {
@@ -33,6 +57,22 @@ class _BubbleWordAppState extends State<BubbleWordApp> {
       music: settings.music,
       haptics: settings.haptics,
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_scheduleLocalNotifications());
+    });
+  }
+
+  Future<void> _scheduleLocalNotifications() async {
+    try {
+      final count = await getIt<LocalNotificationService>()
+          .scheduleNotifications();
+      getIt<AnalyticsService>().logNotificationScheduled(
+        count: count,
+        source: 'app_start',
+      );
+    } catch (_) {
+      // Local notifications are best-effort and fully offline.
+    }
   }
 
   @override
