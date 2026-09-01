@@ -17,11 +17,11 @@ import '../../core/utils/audio_service.dart';
 import '../../core/utils/board_layout.dart';
 import '../../core/widgets/banner_ad_widget.dart';
 import '../../core/widgets/bubble_ball_widget.dart';
-import '../../core/widgets/glow_platform.dart';
 import '../../core/widgets/guide_hand_overlay.dart';
 import '../../core/widgets/hint_connector_painter.dart';
 import '../../core/widgets/game_header_bar.dart';
-import '../../core/widgets/nebula_background.dart';
+import '../../core/widgets/merge_blast_effect.dart';
+import '../../core/widgets/game_park_background.dart';
 import '../../core/widgets/target_words_panel.dart';
 import '../../domain/entities/ball.dart';
 import '../../domain/entities/enums.dart';
@@ -67,6 +67,8 @@ class _GameScreenState extends State<GameScreen>
   Timer? _levelTimer;
   bool _lifeSpentForFail = false;
   bool _dropAnimationStarted = false;
+  final List<_MergeBlastInstance> _mergeBlasts = [];
+  int _nextBlastId = 0;
 
   @override
   void initState() {
@@ -90,6 +92,7 @@ class _GameScreenState extends State<GameScreen>
       _lifeSpentForFail = false;
       _dropAnimationStarted = false;
       _dropController.reset();
+      _mergeBlasts.clear();
       _stopLevelTimer();
     }
   }
@@ -200,6 +203,53 @@ class _GameScreenState extends State<GameScreen>
     );
   }
 
+  Color _balloonColorFor(Ball ball) {
+    if (ball.type == BallType.completeWord ||
+        ball.type == BallType.wordInProgress) {
+      return AppColors.marbleForWordChip(ball.chars).first;
+    }
+    return AppColors.marbleForBall(ball.id).first;
+  }
+
+  void _spawnMergeBlast(GamePlaying state, {required bool celebratory}) {
+    final gs = state.gameState;
+    final x = gs.mergeBlastX;
+    final y = gs.mergeBlastY;
+    if (x == null || y == null) return;
+
+    Color color = AppColors.bubbleGlow;
+    double blastRadius = 28;
+    final snapId = gs.snapBallId;
+    Ball? refBall;
+    if (snapId != null) {
+      refBall = gs.boardBalls.where((b) => b.id == snapId).firstOrNull ??
+          gs.trayBalls.where((b) => b.id == snapId).firstOrNull;
+    }
+    refBall ??= gs.boardBalls.where((b) => b.isOnBoard).firstOrNull;
+    if (refBall != null) {
+      color = _balloonColorFor(refBall);
+      blastRadius = _ballRadius(refBall);
+    }
+
+    final id = _nextBlastId++;
+    setState(() {
+      _mergeBlasts.add(
+        _MergeBlastInstance(
+          id: id,
+          center: Offset(x, y),
+          color: color,
+          radius: blastRadius,
+          celebratory: celebratory,
+        ),
+      );
+    });
+  }
+
+  void _removeMergeBlast(int id) {
+    if (!mounted) return;
+    setState(() => _mergeBlasts.removeWhere((b) => b.id == id));
+  }
+
   void _handleMergeFeedback(BuildContext context, GamePlaying state) {
     final feedback = state.gameState.mergeFeedback;
     if (feedback == MergeFeedback.none) return;
@@ -210,10 +260,11 @@ class _GameScreenState extends State<GameScreen>
 
     switch (feedback) {
       case MergeFeedback.correct:
-        audio.playMerge();
-        audio.hapticMerge();
+        _spawnMergeBlast(state, celebratory: false);
+        audio.playMergeBlast(celebratory: false);
       case MergeFeedback.wordComplete:
-        audio.playWordComplete();
+        _spawnMergeBlast(state, celebratory: true);
+        audio.playMergeBlast(celebratory: true);
       case MergeFeedback.wrong:
         audio.playWrong();
       case MergeFeedback.none:
@@ -450,7 +501,7 @@ class _GameScreenState extends State<GameScreen>
             },
           ),
         ],
-        child: NebulaBackground(
+        child: GameParkBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             body: SafeArea(
@@ -852,13 +903,6 @@ class _GameScreenState extends State<GameScreen>
                       key: _playfieldKey,
                       clipBehavior: Clip.none,
                       children: [
-                        const Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          height: 36,
-                          child: GlowPlatform(),
-                        ),
                         if (hintA != null && hintB != null)
                           CustomPaint(
                             size: Size(_boardWidth, _boardHeight),
@@ -871,6 +915,16 @@ class _GameScreenState extends State<GameScreen>
                           onBoard,
                           gs.snapBallId,
                           dropComplete: gs.dropComplete,
+                        ),
+                        ..._mergeBlasts.map(
+                          (blast) => MergeBlastEffect(
+                            key: ValueKey('blast_${blast.id}'),
+                            center: blast.center,
+                            color: blast.color,
+                            radius: blast.radius,
+                            celebratory: blast.celebratory,
+                            onComplete: () => _removeMergeBlast(blast.id),
+                          ),
                         ),
                         if (guideFrom != null &&
                             guideTo != null &&
@@ -925,6 +979,22 @@ class _GameScreenState extends State<GameScreen>
 enum _PendingAdAction {
   hintInterstitial,
   hintRewarded,
+}
+
+class _MergeBlastInstance {
+  const _MergeBlastInstance({
+    required this.id,
+    required this.center,
+    required this.color,
+    required this.radius,
+    required this.celebratory,
+  });
+
+  final int id;
+  final Offset center;
+  final Color color;
+  final double radius;
+  final bool celebratory;
 }
 
 extension _FirstOrNull<E> on Iterable<E> {

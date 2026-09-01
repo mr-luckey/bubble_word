@@ -342,6 +342,8 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
         completedWordIds: completedIds,
         mergeFeedback: MergeFeedback.wordComplete,
         snapBallId: result.resultBall.id,
+        mergeBlastX: target.x,
+        mergeBlastY: target.y,
         clearDragging: true,
         clearLastWrong: true,
         hintBallIds: const [],
@@ -360,6 +362,8 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
       completedWordIds: completedIds,
       mergeFeedback: MergeFeedback.correct,
       snapBallId: result.resultBall.id,
+      mergeBlastX: target.x,
+      mergeBlastY: target.y,
       clearDragging: true,
       clearLastWrong: true,
       hintBallIds: const [],
@@ -570,6 +574,7 @@ class GameBloc extends Bloc<GameEvent, GameBlocState> {
         current.gameState.copyWith(
           mergeFeedback: MergeFeedback.none,
           clearSnap: true,
+          clearMergeBlast: true,
         ),
       ),
     );

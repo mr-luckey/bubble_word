@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
 
-/// Purple glowing stage at the bottom of the playfield.
+/// Soft stage glow on park pathway.
 class GlowPlatform extends StatelessWidget {
   const GlowPlatform({super.key});
 
@@ -24,11 +24,11 @@ class _GlowPlatformPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height * 0.55);
+    final center = Offset(size.width / 2, size.height * 0.6);
     final rect = Rect.fromCenter(
       center: center,
-      width: size.width * 0.88,
-      height: size.height * 0.75,
+      width: size.width * 0.92,
+      height: size.height * 0.85,
     );
 
     canvas.drawOval(
@@ -36,13 +36,13 @@ class _GlowPlatformPainter extends CustomPainter {
       Paint()
         ..shader = ui.Gradient.radial(
           center,
-          size.width * 0.45,
+          size.width * 0.48,
           [
-            AppColors.neonPurple.withValues(alpha: 0.55),
-            AppColors.nebulaPurple.withValues(alpha: 0.25),
+            AppColors.neonPurple.withValues(alpha: 0.35),
+            const Color(0xFF4A2D8C).withValues(alpha: 0.15),
             Colors.transparent,
           ],
-          [0.0, 0.55, 1.0],
+          [0.0, 0.5, 1.0],
         ),
     );
 
@@ -50,8 +50,8 @@ class _GlowPlatformPainter extends CustomPainter {
       rect,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
-        ..color = AppColors.neonPurple.withValues(alpha: 0.65),
+        ..strokeWidth = 1.5
+        ..color = AppColors.neonPurple.withValues(alpha: 0.4),
     );
   }
 

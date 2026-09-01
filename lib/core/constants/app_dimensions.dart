@@ -21,8 +21,8 @@ abstract final class AppDimensions {
   static const double tabletBreakpoint = 600;
   static const double splashDurationMs = 2500;
 
-  /// Fixed objective panel height — must not grow when words complete.
-  static const double targetWordsPanelHeight = 88;
+  /// Fixed objective panel height — marquee bulbs + hint + word pills.
+  static const double targetWordsPanelHeight = 96;
 
   static const Duration mergeAnimation = Duration(milliseconds: 300);
   static const Duration shakeAnimation = Duration(milliseconds: 200);

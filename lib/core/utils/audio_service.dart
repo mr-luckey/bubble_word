@@ -5,9 +5,11 @@ import 'package:flutter/services.dart';
 class AudioService {
   AudioService()
       : _sfx = AudioPlayer(playerId: 'sfx'),
+        _sfxPop = AudioPlayer(playerId: 'sfx_pop'),
         _music = AudioPlayer(playerId: 'music');
 
   final AudioPlayer _sfx;
+  final AudioPlayer _sfxPop;
   final AudioPlayer _music;
 
   bool soundEnabled = true;
@@ -17,6 +19,7 @@ class AudioService {
 
   Future<void> init() async {
     await _sfx.setReleaseMode(ReleaseMode.stop);
+    await _sfxPop.setReleaseMode(ReleaseMode.stop);
     await _music.setReleaseMode(ReleaseMode.loop);
     await _music.setVolume(0.32);
   }
@@ -60,6 +63,33 @@ class AudioService {
   }
 
   Future<void> playMerge() => _playSfx('audio/merge.wav');
+
+  /// Balloon pop + merge chime — layered for satisfying blast feedback.
+  Future<void> playMergeBlast({bool celebratory = false}) async {
+    if (!soundEnabled) return;
+    try {
+      await _sfxPop.stop();
+      await _sfxPop.play(AssetSource('audio/pop.wav'));
+      if (celebratory) {
+        await Future<void>.delayed(const Duration(milliseconds: 60));
+        await _playSfx('audio/word_complete.wav');
+      } else {
+        await Future<void>.delayed(const Duration(milliseconds: 40));
+        await _sfx.stop();
+        await _sfx.play(AssetSource('audio/merge.wav'));
+      }
+      await hapticMergeBlast(celebratory: celebratory);
+    } catch (_) {}
+  }
+
+  Future<void> hapticMergeBlast({bool celebratory = false}) async {
+    if (!hapticsEnabled) return;
+    await HapticFeedback.mediumImpact();
+    if (celebratory) {
+      await Future<void>.delayed(const Duration(milliseconds: 70));
+      await HapticFeedback.heavyImpact();
+    }
+  }
 
   Future<void> playWrong() async {
     await _playSfx('audio/wrong.wav');
@@ -124,6 +154,7 @@ class AudioService {
 
   Future<void> dispose() async {
     await _sfx.dispose();
+    await _sfxPop.dispose();
     await _music.dispose();
   }
 }

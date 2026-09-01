@@ -20,6 +20,8 @@ class GameState extends Equatable {
     this.mergeFeedback = MergeFeedback.none,
     this.snapBallId,
     this.dropComplete = false,
+    this.mergeBlastX,
+    this.mergeBlastY,
   });
 
   final Level level;
@@ -38,6 +40,9 @@ class GameState extends Equatable {
   final String? snapBallId;
   /// True after intro drop finishes — owned by GameBloc (no setState).
   final bool dropComplete;
+  /// Merge pop VFX anchor (target ball position before blast).
+  final double? mergeBlastX;
+  final double? mergeBlastY;
 
   bool get allWordsComplete =>
       completedWordIds.length >= level.wordCount;
@@ -63,6 +68,9 @@ class GameState extends Equatable {
     bool clearLastWrong = false,
     bool clearDragging = false,
     bool clearSnap = false,
+    double? mergeBlastX,
+    double? mergeBlastY,
+    bool clearMergeBlast = false,
   }) {
     return GameState(
       level: level ?? this.level,
@@ -83,6 +91,12 @@ class GameState extends Equatable {
       mergeFeedback: mergeFeedback ?? this.mergeFeedback,
       snapBallId: clearSnap ? null : (snapBallId ?? this.snapBallId),
       dropComplete: dropComplete ?? this.dropComplete,
+      mergeBlastX: clearMergeBlast
+          ? null
+          : (mergeBlastX ?? this.mergeBlastX),
+      mergeBlastY: clearMergeBlast
+          ? null
+          : (mergeBlastY ?? this.mergeBlastY),
     );
   }
 
@@ -103,5 +117,7 @@ class GameState extends Equatable {
         mergeFeedback,
         snapBallId,
         dropComplete,
+        mergeBlastX,
+        mergeBlastY,
       ];
 }

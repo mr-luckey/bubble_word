@@ -66,18 +66,18 @@ abstract final class AppColors {
     return ballColors[category] ?? ballColors['default']!;
   }
 
-  /// Vibrant gel-bubble palette (reference screenshot).
+  /// Reference candy balloons — vivid + darker same-hue shade (no muddy black).
   static const List<List<Color>> marblePalette = [
-    [Color(0xFFFF4D4D), Color(0xFFE53935)],
-    [Color(0xFF3D8BFF), Color(0xFF1E6FE8)],
-    [Color(0xFF6FE647), Color(0xFF43C843)],
-    [Color(0xFFFFB020), Color(0xFFFF8C00)],
-    [Color(0xFFB44DFF), Color(0xFF8E24FF)],
-    [Color(0xFFFF5DA2), Color(0xFFE91E8C)],
-    [Color(0xFF2ED9E8), Color(0xFF00ACC1)],
-    [Color(0xFFFFEB3B), Color(0xFFFFC107)],
-    [Color(0xFF7C6CFF), Color(0xFF5C4DFF)],
-    [Color(0xFF26D9A3), Color(0xFF00BFA5)],
+    [Color(0xFFFF4757), Color(0xFFE63946)], // cherry red
+    [Color(0xFFFF9F1A), Color(0xFFFF7A00)], // orange
+    [Color(0xFFFFD32A), Color(0xFFFFB800)], // yellow
+    [Color(0xFF2ED573), Color(0xFF1DB954)], // lime green
+    [Color(0xFF1DD1F2), Color(0xFF00B4D8)], // cyan
+    [Color(0xFF3742FA), Color(0xFF2F3AFF)], // royal blue
+    [Color(0xFFA55EEA), Color(0xFF8854D0)], // purple
+    [Color(0xFFFF6B81), Color(0xFFFF4757)], // hot pink
+    [Color(0xFF70A1FF), Color(0xFF4B7BEC)], // sky blue
+    [Color(0xFFFF6348), Color(0xFFFF4757)], // coral
   ];
 
   static const Color neonPurple = Color(0xFFB388FF);
