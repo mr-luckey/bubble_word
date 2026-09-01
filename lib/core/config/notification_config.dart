@@ -21,16 +21,16 @@ class NotificationMessage {
 enum NotificationRotationMode { alternate, sequential }
 
 /// Flip to `true` to schedule [NotificationConfig.testCount] notifications
-/// every [NotificationConfig.testInterval] (default 10s) for manual QA.
+/// every [NotificationConfig.testInterval] for manual QA.
 /// Production uses 17:00 / 21:00 local times and works fully offline.
-const notificationTestMode = true;
+const notificationTestMode = false;
 
 class NotificationConfig {
   const NotificationConfig({
     this.enabled = true,
     this.testMode = notificationTestMode,
-    this.testInterval = const Duration(seconds: 10),
-    this.testCount = 5,
+    this.testInterval = const Duration(seconds: 5),
+    this.testCount = 6,
     this.assetPath = 'assets/notifications/notifications.json',
     this.scheduleTimes = const ['17:00', '21:00'],
     this.rotationMode = NotificationRotationMode.alternate,

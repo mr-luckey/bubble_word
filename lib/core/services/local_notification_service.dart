@@ -52,9 +52,9 @@ class LocalNotificationService {
 
       const android = AndroidInitializationSettings('@mipmap/ic_launcher');
       const ios = DarwinInitializationSettings(
-        requestAlertPermission: false,
-        requestBadgePermission: false,
-        requestSoundPermission: false,
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
       );
       await _plugin.initialize(
         settings: const InitializationSettings(android: android, iOS: ios),
@@ -62,6 +62,8 @@ class LocalNotificationService {
           onTap?.call(response.payload);
         },
       );
+
+      await _ensureAndroidChannel();
 
       final launch = await _plugin.getNotificationAppLaunchDetails();
       if (launch?.didNotificationLaunchApp == true) {
@@ -83,20 +85,96 @@ class LocalNotificationService {
     try {
       final android = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
+      if (android != null) {
+        final notificationsOk =
+            await android.requestNotificationsPermission() ?? true;
+        if (!notificationsOk) {
+          debugPrint('Notification permission denied (POST_NOTIFICATIONS).');
+          return false;
+        }
+
+        if (_config.testMode) {
+          final canExact =
+              await android.canScheduleExactNotifications() ?? true;
+          if (!canExact) {
+            final exactOk =
+                await android.requestExactAlarmsPermission() ?? false;
+            if (!exactOk) {
+              debugPrint(
+                'Exact alarm permission denied. Test notifications may be '
+                'delayed; enable Alarms & reminders in system settings.',
+              );
+            }
+          }
+        }
+        return true;
+      }
+
       final ios = _plugin.resolvePlatformSpecificImplementation<
           IOSFlutterLocalNotificationsPlugin>();
-      final androidOk = await android?.requestNotificationsPermission() ?? true;
-      final iosOk = await ios?.requestPermissions(
-            alert: true,
-            badge: true,
-            sound: true,
-          ) ??
-          true;
-      return androidOk && iosOk;
+      if (ios != null) {
+        final iosOk = await ios.requestPermissions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+        if (iosOk != true) {
+          debugPrint('Notification permission denied (alert/badge/sound).');
+        }
+        return iosOk ?? false;
+      }
+
+      return true;
     } catch (error, stack) {
       debugPrint('Notification permission failed: $error\n$stack');
       return false;
     }
+  }
+
+  Future<void> _ensureAndroidChannel() async {
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (android == null) return;
+    await android.createNotificationChannel(
+      AndroidNotificationChannel(
+        _config.androidChannelId,
+        _config.androidChannelName,
+        description: 'BubbleWord reminders',
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+      ),
+    );
+  }
+
+  NotificationDetails _testNotificationDetails() {
+    return NotificationDetails(
+      android: AndroidNotificationDetails(
+        _config.androidChannelId,
+        _config.androidChannelName,
+        channelDescription: 'BubbleWord reminders',
+        importance: Importance.max,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+        ticker: 'BubbleWord test notification',
+      ),
+      iOS: const DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        interruptionLevel: InterruptionLevel.timeSensitive,
+      ),
+    );
+  }
+
+  Future<AndroidScheduleMode> _androidScheduleModeForTest() async {
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    final canExact = await android?.canScheduleExactNotifications() ?? true;
+    return canExact
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
   }
 
   /// Safe to call on every launch. Does not create duplicates.
@@ -207,10 +285,23 @@ class LocalNotificationService {
   }
 
   /// Schedules [testCount] notifications at [testInterval] steps from now.
-  /// OS delivers these even when the app is closed or in background.
+  /// Also fires one immediate notification so QA can confirm delivery.
   Future<int> _scheduleTestBurst(List<NotificationMessage> messages) async {
     var scheduled = 0;
     final now = tz.TZDateTime.now(tz.local);
+    final androidScheduleMode = await _androidScheduleModeForTest();
+    final details = _testNotificationDetails();
+    final first = messages.first;
+
+    await _plugin.show(
+      id: 8998,
+      title: '[TEST NOW] ${first.title}',
+      body: first.body,
+      notificationDetails: details,
+      payload: first.id,
+    );
+    scheduled++;
+
     for (var i = 0; i < _config.testCount; i++) {
       final fire = now.add(_config.testInterval * (i + 1));
       final message = messages[i % messages.length];
@@ -219,20 +310,8 @@ class LocalNotificationService {
         title: '[TEST ${i + 1}/${_config.testCount}] ${message.title}',
         body: message.body,
         scheduledDate: fire,
-        notificationDetails: NotificationDetails(
-          android: AndroidNotificationDetails(
-            _config.androidChannelId,
-            _config.androidChannelName,
-            importance: Importance.high,
-            priority: Priority.high,
-          ),
-          iOS: const DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
-        ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        notificationDetails: details,
+        androidScheduleMode: androidScheduleMode,
         payload: message.id,
       );
       scheduled++;

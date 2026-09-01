@@ -61,7 +61,7 @@ Future<void> configureDependencies() async {
 
   getIt.registerLazySingleton(AudioService.new);
   getIt.registerLazySingleton(UpdateService.new);
-  getIt.registerLazySingleton(RateAppService.new);
+  getIt.registerLazySingleton(() => RateAppService(getIt()));
   getIt.registerLazySingleton(AnalyticsService.new);
   getIt.registerLazySingleton(
     () => LocalNotificationService(

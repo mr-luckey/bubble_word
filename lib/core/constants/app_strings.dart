@@ -35,6 +35,12 @@ abstract final class AppStrings {
   static const String music = 'Music';
   static const String haptics = 'Haptics';
   static const String rateApp = 'Rate This App';
+  static const String rateAppTitle = 'Enjoying BubbleWord?';
+  static const String rateAppMessage =
+      'A quick rating helps us grow and keeps new levels coming!';
+  static const String rateNow = 'Rate Now';
+  static const String maybeLater = 'Maybe Later';
+  static const String noThanks = 'No Thanks';
   static const String checkForUpdates = 'Check for Updates';
   static const String updateAvailable = 'Update Available';
   static const String updateMessage =
@@ -59,4 +65,10 @@ abstract final class AppStrings {
   static const String buyLives = 'Buy 5 Lives';
   static const String noAdsPurchased = 'Ads Removed';
   static const String findTheseWords = 'Find these words:';
+  static const String quitGameTitle = 'Quit Game?';
+  static const String quitGameMessage = 'Do you want to quit the game?';
+  static const String quitAppTitle = 'Quit App?';
+  static const String quitAppMessage = 'Do you want to quit BubbleWord?';
+  static const String quit = 'Quit';
+  static const String cancel = 'Cancel';
 }

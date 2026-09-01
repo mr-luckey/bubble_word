@@ -73,7 +73,7 @@ abstract final class AppTextStyles {
     );
   }
 
-  /// Soft drop shadow layer behind balloon letters (reference readability).
+  /// Soft drop shadow behind balloon letters for readability.
   static TextStyle ballTextShadow({required double radius}) {
     final key = _ballRadiusKey(radius);
     return _ballShadowCache.putIfAbsent(
@@ -87,9 +87,9 @@ abstract final class AppTextStyles {
         height: 1.0,
         shadows: [
           Shadow(
-            color: Colors.black.withValues(alpha: 0.32),
-            offset: Offset(radius * 0.05, radius * 0.06),
-            blurRadius: radius * 0.08,
+            color: Colors.black.withValues(alpha: 0.2),
+            offset: Offset(0, radius * 0.03),
+            blurRadius: radius * 0.07,
           ),
         ],
       ),

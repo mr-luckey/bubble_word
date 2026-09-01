@@ -46,7 +46,6 @@ class _HomeScreenState extends State<HomeScreen> {
         final economy = state.economy;
 
         return AppScreenShell(
-          bottomNavIndex: 0,
           showTopBar: true,
           hearts: economy.lives,
           refillSeconds: economy.lifeRefillSeconds,

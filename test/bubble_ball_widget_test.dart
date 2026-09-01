@@ -22,7 +22,7 @@ void main() {
         ),
       ),
     );
-    // Fill + stroke layers share the same text.
+    // Fill + soft shadow layers share the same text.
     expect(find.text('BL'), findsNWidgets(2));
   });
 

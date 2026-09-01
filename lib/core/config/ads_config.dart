@@ -77,10 +77,10 @@ class AdsConfig {
       _unit(bannerAdUnits, bannerPlacements[placement], bannerEnabled);
 
   String? interstitialUnitId(String placement) => _unit(
-        interstitialAdUnits,
-        interstitialPlacements[placement],
-        interstitialEnabled,
-      );
+    interstitialAdUnits,
+    interstitialPlacements[placement],
+    interstitialEnabled,
+  );
 
   String? rewardedUnitId(String placement) =>
       _unit(rewardedAdUnits, rewardedPlacements[placement], rewardedEnabled);
@@ -111,10 +111,10 @@ class AdsConfig {
 }
 
 /// Production unit IDs already present in this project. Debug/tests use
-/// [GoogleTestAdUnits] via [AdsConfig.testMode] (`kDebugMode`).
+/// [GoogleTestAdUnits] via [AdsConfig.testMode].
 const appAdsConfig = AdsConfig(
   isEnabled: true,
-  testMode: kDebugMode,
+  testMode: false,
   bannerEnabled: true,
   interstitialEnabled: true,
   rewardedEnabled: true,
@@ -150,9 +150,7 @@ const appAdsConfig = AdsConfig(
     AdsPlacements.interstitialAfterLevel: 0,
     AdsPlacements.interstitialHintGate: 1,
   },
-  rewardedPlacements: {
-    AdsPlacements.rewardedHint: 0,
-  },
+  rewardedPlacements: {AdsPlacements.rewardedHint: 0},
   minimumInterstitialInterval: Duration(minutes: 2),
   maxRetries: 2,
   retryBackoff: Duration(seconds: 30),

@@ -15,13 +15,15 @@ import '../../core/router/app_router.dart';
 import '../../core/services/analytics_service.dart';
 import '../../core/utils/audio_service.dart';
 import '../../core/utils/board_layout.dart';
+import '../../core/utils/quit_dialog.dart';
+import '../../core/utils/rate_app_dialog.dart';
+import '../../core/utils/rate_app_service.dart';
 import '../../core/widgets/banner_ad_widget.dart';
 import '../../core/widgets/bubble_ball_widget.dart';
 import '../../core/widgets/guide_hand_overlay.dart';
 import '../../core/widgets/hint_connector_painter.dart';
 import '../../core/widgets/game_header_bar.dart';
 import '../../core/widgets/merge_blast_effect.dart';
-import '../../core/widgets/game_park_background.dart';
 import '../../core/widgets/target_words_panel.dart';
 import '../../domain/entities/ball.dart';
 import '../../domain/entities/enums.dart';
@@ -203,6 +205,15 @@ class _GameScreenState extends State<GameScreen>
     );
   }
 
+  Future<void> _maybeShowRateDialog(int levelId) async {
+    final rateService = getIt<RateAppService>();
+    if (!rateService.shouldRandomlyPrompt(levelId: levelId)) return;
+
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+    if (!mounted) return;
+    await showRateAppDialog(context);
+  }
+
   Color _balloonColorFor(Ball ball) {
     if (ball.type == BallType.completeWord ||
         ball.type == BallType.wordInProgress) {
@@ -374,6 +385,31 @@ class _GameScreenState extends State<GameScreen>
     }
   }
 
+  void _leaveGame() {
+    _stopLevelTimer();
+    if (widget.isDailyChallenge) {
+      context.go('/daily');
+    } else {
+      context.go('/home');
+    }
+  }
+
+  Future<void> _requestLeaveGame() async {
+    final state = _gameBloc.state;
+    if (state is GameWon || state is GameFailed) {
+      _leaveGame();
+      return;
+    }
+    if (!mounted) return;
+    if (await showQuitGameDialog(context)) {
+      if (mounted) _leaveGame();
+    }
+  }
+
+  Future<void> _handleSystemBack() async {
+    await _requestLeaveGame();
+  }
+
   @override
   void dispose() {
     final playing = _gameBloc.state;
@@ -400,7 +436,13 @@ class _GameScreenState extends State<GameScreen>
         BlocProvider.value(value: _gameBloc),
         BlocProvider.value(value: _boosterBloc),
       ],
-      child: MultiBlocListener(
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
+          unawaited(_handleSystemBack());
+        },
+        child: MultiBlocListener(
         listeners: [
           BlocListener<LevelBloc, LevelState>(
             listener: (context, state) {
@@ -477,6 +519,9 @@ class _GameScreenState extends State<GameScreen>
                         );
                     economy.add(const ResetLevelsCompletedAd());
                   }
+                  unawaited(
+                    _maybeShowRateDialog(state.gameState.level.id),
+                  );
                 }
               } else if (state is GameFailed) {
                 _stopLevelTimer();
@@ -501,10 +546,9 @@ class _GameScreenState extends State<GameScreen>
             },
           ),
         ],
-        child: GameParkBackground(
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            body: SafeArea(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
             child: BlocBuilder<LevelBloc, LevelState>(
               builder: (context, levelState) {
                 if (levelState is LevelLoading) {
@@ -607,7 +651,7 @@ class _GameScreenState extends State<GameScreen>
           ),
         ),
       ),
-    ),
+      ),
     );
   }
 
@@ -621,8 +665,9 @@ class _GameScreenState extends State<GameScreen>
     );
   }
 
-  double _ballSize(Ball ball) {
-    return AppDimensions.visualBallSize(_ballRadius(ball));
+  Size _ballWidgetSize(Ball ball) {
+    final r = _ballRadius(ball);
+    return AppDimensions.balloonWidgetSize(r);
   }
 
   Ball? _hitTestBall(Offset local, List<Ball> onBoard, {required bool dropComplete}) {
@@ -637,10 +682,11 @@ class _GameScreenState extends State<GameScreen>
         maxY,
         dropComplete: dropComplete,
       );
-      final radius = _ballRadius(ball);
+      final rx = AppDimensions.balloonHalfWidth(_ballRadius(ball));
+      final ry = AppDimensions.balloonHalfHeight(_ballRadius(ball));
       final dx = local.dx - ball.x;
       final dy = local.dy - displayY;
-      if (dx * dx + dy * dy <= radius * radius) {
+      if ((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) <= 1.05) {
         return ball;
       }
     }
@@ -733,11 +779,11 @@ class _GameScreenState extends State<GameScreen>
         maxY,
         dropComplete: dropComplete,
       );
-      final size = _ballSize(ball);
+      final widgetSize = _ballWidgetSize(ball);
       widgets.add(
         Positioned(
-          left: ball.x - size / 2,
-          top: displayY - size / 2,
+          left: ball.x - widgetSize.width / 2,
+          top: displayY - widgetSize.height / 2 + _ballRadius(ball) * 0.06,
           child: BubbleBallWidget(
             key: ValueKey<String>(ball.id),
             ball: ball,
@@ -760,7 +806,7 @@ class _GameScreenState extends State<GameScreen>
             levelId: levelState.level.id,
             timeLeftSeconds:
                 levelState.level.wordCount * GameConstants.secondsPerWord,
-            onBack: () => context.go('/home'),
+            onBack: _requestLeaveGame,
             hintCount: econState.economy.boosters.hint,
             onHint: () => _handleHint(context),
           ),
@@ -808,7 +854,7 @@ class _GameScreenState extends State<GameScreen>
               builder: (context, econState) => GameHeaderBar(
                 levelId: gs.level.id,
                 timeLeftSeconds: gs.timeLeftSeconds,
-                onBack: () => context.go('/home'),
+                onBack: _requestLeaveGame,
                 hintCount: econState.economy.boosters.hint,
                 onHint: () => _handleHint(context),
               ),

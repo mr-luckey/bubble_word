@@ -7,7 +7,6 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_dimensions.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/di/injection.dart';
-import '../../core/utils/rate_app_service.dart';
 import '../../core/utils/update_dialog.dart';
 import '../../core/utils/update_service.dart';
 import '../../core/widgets/app_logo.dart';
@@ -35,16 +34,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final info = await PackageInfo.fromPlatform();
     if (mounted) {
       setState(() => _appVersion = info.version);
-    }
-  }
-
-  Future<void> _rateApp() async {
-    final ok = await getIt<RateAppService>().requestReview();
-    if (!mounted) return;
-    if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.rateAppUnavailable)),
-      );
     }
   }
 
@@ -81,7 +70,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return BlocBuilder<EconomyBloc, EconomyBlocState>(
       builder: (context, econState) {
         return AppScreenShell(
-          bottomNavIndex: 2,
           showTopBar: true,
           hearts: econState.economy.lives,
           refillSeconds: econState.economy.lifeRefillSeconds,
@@ -92,13 +80,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   const Center(child: AppLogo(size: 72)),
                   const SizedBox(height: AppDimensions.paddingM),
-                  Text(
-                    AppStrings.settings.toUpperCase(),
-                    style: GoogleFonts.nunito(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 24,
-                      letterSpacing: 1.2,
+                  Center(
+                    child: Text(
+                      AppStrings.settings.toUpperCase(),
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.nunito(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 24,
+                        letterSpacing: 1.2,
+                      ),
                     ),
                   ),
                   const SizedBox(height: AppDimensions.paddingL),
@@ -122,32 +113,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: AppDimensions.paddingM),
                   _ActionTile(
-                    title: AppStrings.rateApp,
-                    icon: Icons.star_rate_rounded,
-                    iconColor: AppColors.neonGold,
-                    onTap: _rateApp,
-                  ),
-                  _ActionTile(
                     title: AppStrings.checkForUpdates,
                     icon: Icons.system_update_rounded,
                     iconColor: AppColors.bubbleGlow,
                     onTap: _checkForUpdates,
-                  ),
-                  const SizedBox(height: AppDimensions.paddingL),
-                  Container(
-                    padding: const EdgeInsets.all(AppDimensions.paddingM),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1A1040).withValues(alpha: 0.75),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.neonPurple, width: 2),
-                    ),
-                    child: Text(
-                      '${AppStrings.version} $_appVersion',
-                      style: GoogleFonts.nunito(
-                        color: Colors.white54,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
                   ),
                 ],
               );

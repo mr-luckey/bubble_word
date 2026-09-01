@@ -45,7 +45,6 @@ class DailyChallengeScreen extends StatelessWidget {
             economy.goldenHeartRefillSeconds > 0;
 
         return AppScreenShell(
-          bottomNavIndex: 1,
           showTopBar: true,
           bannerPlacement: AdsPlacements.daily,
           hearts: economy.goldenHearts,

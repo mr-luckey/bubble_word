@@ -9,6 +9,7 @@ import 'core/router/app_router.dart';
 import 'core/services/analytics_service.dart';
 import 'core/services/local_notification_service.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/nebula_background.dart';
 import 'core/utils/audio_service.dart';
 import 'presentation/bloc/ad/ad_bloc.dart';
 import 'presentation/bloc/economy/economy_bloc.dart';
@@ -57,7 +58,9 @@ class _BubbleWordAppState extends State<BubbleWordApp> {
       music: settings.music,
       haptics: settings.haptics,
     );
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Android permission dialogs need a visible Activity.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
       unawaited(_scheduleLocalNotifications());
     });
   }
@@ -66,12 +69,13 @@ class _BubbleWordAppState extends State<BubbleWordApp> {
     try {
       final count = await getIt<LocalNotificationService>()
           .scheduleNotifications();
+      debugPrint('Local notifications scheduled: $count');
       getIt<AnalyticsService>().logNotificationScheduled(
         count: count,
         source: 'app_start',
       );
-    } catch (_) {
-      // Local notifications are best-effort and fully offline.
+    } catch (error, stack) {
+      debugPrint('Local notification scheduling failed: $error\n$stack');
     }
   }
 
@@ -93,10 +97,17 @@ class _BubbleWordAppState extends State<BubbleWordApp> {
         },
         child: MaterialApp.router(
           title: 'BubbleWord',
-          theme: AppTheme.darkTheme,
+          theme: AppTheme.darkTheme.copyWith(
+            scaffoldBackgroundColor: Colors.transparent,
+          ),
           scaffoldMessengerKey: rootScaffoldMessengerKey,
           routerConfig: createRouter(),
           debugShowCheckedModeBanner: false,
+          builder: (context, child) {
+            return NebulaBackground(
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
         ),
       ),
     );

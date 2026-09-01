@@ -6,8 +6,9 @@ import 'package:flutter/material.dart';
 import '../../domain/entities/ball.dart';
 import '../../domain/entities/enums.dart';
 import '../constants/app_colors.dart';
+import '../constants/app_dimensions.dart';
 
-/// Reference latex balloon — vivid candy color + crisp specular + sphere depth.
+/// Oval latex balloon — inflated candy color with soft latex sheen.
 class BalloonLatexPainter extends CustomPainter {
   BalloonLatexPainter({
     required this.ball,
@@ -24,45 +25,48 @@ class BalloonLatexPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
-    final cy = size.height / 2 - radius * 0.05;
-    final r = radius;
+    final cy = size.height / 2 - radius * 0.06;
+    final rx = AppDimensions.balloonHalfWidth(radius);
+    final ry = AppDimensions.balloonHalfHeight(radius);
     final center = Offset(cx, cy);
-    final body = Rect.fromCircle(center: center, radius: r);
+    final body = Rect.fromCenter(center: center, width: 2 * rx, height: 2 * ry);
     final bodyPath = Path()..addOval(body);
 
     final pair = _palettePair();
     final vivid = pair[0];
     final shade = pair[1];
-    final gloss = Color.lerp(vivid, Colors.white, 0.22)!;
+    final gloss = Color.lerp(vivid, Colors.white, 0.1)!;
 
-    // Soft float shadow.
+    // Soft colored floor shadow — not a dark ring.
     canvas.drawOval(
       Rect.fromCenter(
-        center: Offset(cx, cy + r * 0.82),
-        width: r * 0.85,
-        height: r * 0.22,
+        center: Offset(cx, cy + ry * 0.9),
+        width: rx * 1.35,
+        height: ry * 0.2,
       ),
       Paint()
-        ..color = Colors.black.withValues(alpha: 0.22)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+        ..color = shade.withValues(alpha: 0.16)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
     );
 
-    // Colored floor reflection.
     canvas.drawOval(
       Rect.fromCenter(
-        center: Offset(cx, cy + r * 0.82),
-        width: r * 0.72,
-        height: r * 0.18,
+        center: Offset(cx, cy + ry * 0.88),
+        width: rx * 1.2,
+        height: ry * 0.16,
       ),
       Paint()
-        ..color = vivid.withValues(alpha: 0.28)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9),
+        ..color = vivid.withValues(alpha: 0.2)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
     );
 
     if (ball.isHighlighted) {
-      canvas.drawCircle(
-        center,
-        r + 3,
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: center,
+          width: 2 * (rx + 3),
+          height: 2 * (ry + 3),
+        ),
         Paint()
           ..color = AppColors.neonGold.withValues(alpha: 0.38)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
@@ -70,9 +74,12 @@ class BalloonLatexPainter extends CustomPainter {
     }
 
     if (isDragging) {
-      canvas.drawCircle(
-        center,
-        r + 5,
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: center,
+          width: 2 * (rx + 5),
+          height: 2 * (ry + 5),
+        ),
         Paint()
           ..color = vivid.withValues(alpha: 0.42)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
@@ -82,127 +89,94 @@ class BalloonLatexPainter extends CustomPainter {
     canvas.save();
     canvas.clipPath(bodyPath);
 
-    // Sphere body — vivid dominates; shade only on rim (no black).
     canvas.drawOval(
       body,
       Paint()
         ..shader = ui.Gradient.radial(
-          Offset(cx - r * 0.38, cy - r * 0.42),
-          r * 1.35,
-          [gloss, vivid, vivid, shade],
-          [0.0, 0.28, 0.72, 1.0],
+          Offset(cx - rx * 0.34, cy - ry * 0.38),
+          math.max(rx, ry) * 1.42,
+          [gloss, vivid, vivid, shade, shade.withValues(alpha: 0.92)],
+          [0.0, 0.22, 0.58, 0.86, 1.0],
         ),
     );
 
-    // Bottom-right depth — same hue, low alpha.
     canvas.drawOval(
       body,
       Paint()
         ..shader = ui.Gradient.radial(
-          Offset(cx + r * 0.32, cy + r * 0.34),
-          r * 0.82,
-          [Colors.transparent, shade.withValues(alpha: 0.42)],
-          [0.55, 1.0],
+          Offset(cx + rx * 0.28, cy + ry * 0.3),
+          math.max(rx, ry) * 0.78,
+          [Colors.transparent, shade.withValues(alpha: 0.36)],
+          [0.5, 1.0],
         ),
     );
 
-    _drawSpecular(canvas, center, r);
-
     canvas.restore();
 
-    canvas.drawOval(
-      body,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.1
-        ..color = Colors.white.withValues(alpha: 0.28),
-    );
-
-    _drawKnotAndRibbon(canvas, center, r, shade, vivid);
-    _drawRings(canvas, center, r);
-  }
-
-  void _drawSpecular(Canvas canvas, Offset c, double r) {
-    canvas.save();
-    canvas.clipRect(
-      Rect.fromLTWH(c.dx - r, c.dy - r, r * 0.82, r * 0.78),
-    );
-
-    canvas.save();
-    canvas.translate(c.dx, c.dy);
-    canvas.rotate(-0.38);
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(-r * 0.24, -r * 0.34),
-        width: r * 0.44,
-        height: r * 0.26,
-      ),
-      Paint()
-        ..shader = ui.Gradient.radial(
-          Offset(-r * 0.24, -r * 0.34),
-          r * 0.28,
-          [
-            Colors.white.withValues(alpha: 0.95),
-            Colors.white.withValues(alpha: 0.55),
-            Colors.white.withValues(alpha: 0.0),
-          ],
-          [0.0, 0.55, 1.0],
-        ),
-    );
-    canvas.restore();
-
-    canvas.drawCircle(
-      c.translate(-r * 0.3, -r * 0.4),
-      r * 0.065,
-      Paint()..color = Colors.white,
-    );
-    canvas.restore();
+    _drawKnotAndRibbon(canvas, center, rx, ry, shade, vivid);
+    _drawRings(canvas, center, rx, ry);
   }
 
   void _drawKnotAndRibbon(
     Canvas canvas,
     Offset c,
-    double r,
+    double rx,
+    double ry,
     Color shade,
     Color vivid,
   ) {
-    final knotY = c.dy + r * 0.9;
+    final knotY = c.dy + ry * 0.9;
     final knot = Path()
-      ..moveTo(c.dx, knotY - r * 0.02)
-      ..lineTo(c.dx - r * 0.09, knotY + r * 0.11)
-      ..lineTo(c.dx + r * 0.09, knotY + r * 0.11)
+      ..moveTo(c.dx - rx * 0.1, knotY)
+      ..quadraticBezierTo(c.dx, knotY - ry * 0.05, c.dx + rx * 0.1, knotY)
+      ..lineTo(c.dx + rx * 0.14, knotY + ry * 0.09)
+      ..quadraticBezierTo(c.dx, knotY + ry * 0.12, c.dx - rx * 0.14, knotY + ry * 0.09)
       ..close();
-    canvas.drawPath(knot, Paint()..color = shade);
+    canvas.drawPath(
+      knot,
+      Paint()
+        ..shader = ui.Gradient.linear(
+          Offset(c.dx, knotY - ry * 0.04),
+          Offset(c.dx, knotY + ry * 0.1),
+          [Color.lerp(vivid, Colors.white, 0.08)!, shade],
+        ),
+    );
 
-    final stringColor = Color.lerp(vivid, shade, 0.35)!;
+    final stringColor = Color.lerp(vivid, shade, 0.45)!;
     final ribbon = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.15
-      ..color = stringColor.withValues(alpha: 0.85);
+      ..strokeWidth = 0.9
+      ..color = stringColor.withValues(alpha: 0.72);
+    final stringEnd = knotY + ry * 0.36;
     canvas.drawPath(
       Path()
-        ..moveTo(c.dx, knotY + r * 0.11)
+        ..moveTo(c.dx, knotY + ry * 0.08)
         ..quadraticBezierTo(
-          c.dx + r * 0.14,
-          knotY + r * 0.22,
-          c.dx - r * 0.05,
-          knotY + r * 0.3,
+          c.dx + rx * 0.18,
+          knotY + ry * 0.16,
+          c.dx - rx * 0.04,
+          knotY + ry * 0.24,
         )
         ..quadraticBezierTo(
-          c.dx - r * 0.13,
-          knotY + r * 0.38,
-          c.dx + r * 0.06,
-          knotY + r * 0.44,
+          c.dx - rx * 0.14,
+          knotY + ry * 0.3,
+          c.dx + rx * 0.06,
+          stringEnd,
         ),
       ribbon,
     );
   }
 
-  void _drawRings(Canvas canvas, Offset c, double r) {
+  void _drawRings(Canvas canvas, Offset c, double rx, double ry) {
+    final ring = Rect.fromCenter(
+      center: c,
+      width: 2 * (rx + 2),
+      height: 2 * (ry + 2),
+    );
+
     if (ball.isHighlighted) {
-      canvas.drawCircle(
-        c,
-        r + 2,
+      canvas.drawOval(
+        ring,
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.5
@@ -210,9 +184,8 @@ class BalloonLatexPainter extends CustomPainter {
       );
     }
     if (ball.type == BallType.completeWord) {
-      canvas.drawCircle(
-        c,
-        r + 2,
+      canvas.drawOval(
+        ring,
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2
@@ -220,9 +193,8 @@ class BalloonLatexPainter extends CustomPainter {
       );
     }
     if (ball.type == BallType.junk) {
-      canvas.drawCircle(
-        c,
-        r,
+      canvas.drawOval(
+        Rect.fromCenter(center: c, width: 2 * rx, height: 2 * ry),
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.5
@@ -234,7 +206,7 @@ class BalloonLatexPainter extends CustomPainter {
         ball.mergeTotal > 0) {
       final progress = ball.mergeProgress / ball.mergeTotal;
       canvas.drawArc(
-        Rect.fromCircle(center: c, radius: r + 2.5),
+        ring,
         -math.pi / 2,
         math.pi * 2 * progress,
         false,
@@ -248,7 +220,7 @@ class BalloonLatexPainter extends CustomPainter {
     if (ball.type == BallType.superBall) {
       for (var i = 0; i < AppColors.superBallGradient.length; i++) {
         canvas.drawArc(
-          Rect.fromCircle(center: c, radius: r + 2.5),
+          ring,
           (math.pi * 2 / AppColors.superBallGradient.length) * i,
           math.pi * 2 / AppColors.superBallGradient.length,
           false,

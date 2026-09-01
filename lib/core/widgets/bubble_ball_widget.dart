@@ -140,13 +140,16 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
                 charCount: widget.ball.chars.length,
                 isDecoy: widget.ball.type == BallType.decoy,
               );
-    final size =
-        AppDimensions.visualBallSize(radius) + (widget.compact ? -12 : 0);
-    final extent = size * 1.1;
+    final widgetSize = widget.compact
+        ? Size(
+            AppDimensions.balloonWidgetSize(radius).width - 12,
+            AppDimensions.balloonWidgetSize(radius).height - 12,
+          )
+        : AppDimensions.balloonWidgetSize(radius);
 
     final face = SizedBox(
-      width: extent,
-      height: extent,
+      width: widgetSize.width,
+      height: widgetSize.height,
       child: CustomPaint(
         isComplex: true,
         painter: BalloonLatexPainter(
@@ -167,7 +170,7 @@ class _BubbleBallWidgetState extends State<BubbleBallWidget>
                     widget.ball.chars,
                     textAlign: TextAlign.center,
                     maxLines: 1,
-                    style: AppTextStyles.ballTextStroke(radius: radius),
+                    style: AppTextStyles.ballTextShadow(radius: radius),
                   ),
                   Text(
                     widget.ball.chars,

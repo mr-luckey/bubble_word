@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 abstract final class AppDimensions {
@@ -39,9 +37,30 @@ abstract final class AppDimensions {
   }
 
   /// Layout uses the full ball radius — no extra glow padding between balls.
-  static double visualHalfExtent(double radius) => radius;
+  static double visualHalfExtent(double radius) => balloonHalfWidth(radius);
 
-  static double visualBallSize(double radius) => radius * 2;
+  static double visualBallSize(double radius) => balloonVisualWidth(radius);
+
+  /// Classic latex balloon — wider oval reads more like a real inflated balloon.
+  static const double balloonWidthRatio = 1.14;
+  static const double balloonHeightRatio = 1.22;
+
+  static double balloonHalfWidth(double radius) => radius * balloonWidthRatio;
+
+  static double balloonHalfHeight(double radius) =>
+      radius * balloonHeightRatio;
+
+  static double balloonVisualWidth(double radius) => balloonHalfWidth(radius) * 2;
+
+  static double balloonVisualHeight(double radius) =>
+      balloonHalfHeight(radius) * 2;
+
+  /// Widget extent — tight to painted oval + knot/string (no dark gutter ring).
+  static Size balloonWidgetSize(double radius) {
+    final hw = balloonHalfWidth(radius);
+    final hh = balloonHalfHeight(radius);
+    return Size(hw * 2.02, hh * 1.94 + radius * 0.2);
+  }
 
   static double scaledBallRadius(
     BuildContext context, {
