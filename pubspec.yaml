@@ -1,7 +1,7 @@
 name: bubble_word
 description: "BubbleWord - Merge letter balls to form words."
 publish_to: 'none'
-version: 6.0.0+6
+version: 7.0.0+7
 
 environment:
   sdk: ^3.12.2
